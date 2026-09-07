@@ -1,6 +1,5 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
 
 import sqlite3
 import os
@@ -58,32 +57,10 @@ else:
 
 DATABASE = "rifa.db"
 
-UPLOAD_FOLDER = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "uploads",
-    "comprovantes"
-)
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-
-# Limite máximo do comprovante: 10 MB
-
-app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
-
-
-# Extensões permitidas
-
-EXTENSOES_PERMITIDAS = {
-    "jpg",
-    "jpeg",
-    "png",
-    "webp",
-    "pdf"
-}
-
-
-# Tempo máximo para enviar/validar comprovante
+# Tempo máximo para o admin confirmar depois que a pessoa marca
+# "já paguei" (ela é redirecionada pro formulário do Google nesse
+# meio tempo)
 
 HORAS_EXPIRACAO = 24
 
@@ -171,8 +148,8 @@ ADMIN_USUARIOS = {
     os.environ.get("ADMIN_USUARIO_1", "jmagno2011"):
         os.environ.get("ADMIN_SENHA_1", "JM2011"),
 
-    os.environ.get("ADMIN_USUARIO_2", "marcelo"):
-        os.environ.get("ADMIN_SENHA_2", "marcelosenha"),
+    os.environ.get("ADMIN_USUARIO_2", "admin"):
+        os.environ.get("ADMIN_SENHA_2", "admin123"),
 }
 
 
@@ -272,6 +249,44 @@ def agora_texto():
     )
 
 
+def data_para_json(valor):
+    """
+    Formata uma data para mandar pro navegador, deixando explícito
+    que é UTC (o servidor roda em UTC, seja local ou no Render).
+
+    Sem isso, o navegador interpretava a data como se already fosse
+    no fuso horário local da pessoa (ex: Brasil, UTC-3), fazendo o
+    cronômetro de pagamento mostrar quase 3 horas em vez dos 5
+    minutos reais.
+
+    Aceita tanto um objeto datetime quanto o texto já salvo no
+    banco (formato "AAAA-MM-DD HH:MM:SS").
+    """
+
+    if valor is None:
+        return None
+
+    if isinstance(valor, str):
+        return valor.replace(" ", "T") + "Z"
+
+    return valor.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def hora_brasilia_texto(dt):
+    """
+    Só para textos lidos por humanos (e-mails de notificação) —
+    nunca usar o resultado disso em cálculos ou comparações, é
+    apenas um ajuste de exibição (o servidor roda em UTC).
+    """
+
+    if dt is None:
+        return "-"
+
+    ajustada = dt - timedelta(hours=3)
+
+    return ajustada.strftime("%d/%m/%Y %H:%M:%S") + " (horário de Brasília)"
+
+
 def texto_para_data(valor):
 
     if not valor:
@@ -369,26 +384,6 @@ def criar_banco():
     conexao.commit()
 
     conexao.close()
-
-
-# ============================================================
-# EXTENSÃO DO ARQUIVO
-# ============================================================
-
-def extensao_permitida(nome):
-
-    if not nome:
-        return False
-
-    if "." not in nome:
-        return False
-
-    extensao = nome.rsplit(
-        ".",
-        1
-    )[1].lower()
-
-    return extensao in EXTENSOES_PERMITIDAS
 
 
 # ============================================================
@@ -852,7 +847,7 @@ def reservar():
             f"Código da compra: {token}\n"
             f"Números: {numeros_texto}\n"
             f"Quantidade: {len(numeros)}\n"
-            f"Expira em: {expira_em.strftime('%d/%m/%Y %H:%M:%S')}"
+            f"Expira em: {hora_brasilia_texto(expira_em)}"
         )
 
 
@@ -873,9 +868,7 @@ def reservar():
                 numeros,
 
             "expira_em":
-                expira_em.strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
+                data_para_json(expira_em)
 
         })
 
@@ -970,19 +963,19 @@ def consultar_compra(token):
                 compra["status"],
 
             "criado_em":
-                compra["criado_em"],
+                data_para_json(compra["criado_em"]),
 
             "comprovante":
                 compra["comprovante"],
 
             "comprovante_enviado_em":
-                compra["comprovante_enviado_em"],
+                data_para_json(compra["comprovante_enviado_em"]),
 
             "expira_em":
-                compra["expira_em"],
+                data_para_json(compra["expira_em"]),
 
             "confirmado_em":
-                compra["confirmado_em"]
+                data_para_json(compra["confirmado_em"])
 
         }
 
@@ -990,21 +983,27 @@ def consultar_compra(token):
 
 
 # ============================================================
-# UPLOAD DO COMPROVANTE
+# CONFIRMAR "JÁ REALIZEI O PAGAMENTO"
+# ============================================================
+# O comprovante em si não é mais enviado pelo site — a pessoa é
+# redirecionada para o formulário do Google, que é onde o
+# comprovante de verdade fica. Aqui só registramos que ela marcou
+# como pago, e abrimos a janela de 24h para o admin conferir e
+# confirmar no formulário.
 # ============================================================
 
 @app.route(
-    "/api/comprovante",
+    "/api/pagamento-confirmado",
     methods=["POST"]
 )
-def enviar_comprovante():
+def pagamento_confirmado():
 
     expirar_compras()
 
 
-    token = request.form.get(
-        "token"
-    )
+    dados = request.get_json() or {}
+
+    token = dados.get("token")
 
 
     if not token:
@@ -1013,41 +1012,6 @@ def enviar_comprovante():
             "sucesso": False,
             "erro":
                 "Token da compra não enviado."
-        }), 400
-
-
-    arquivo = request.files.get(
-        "comprovante"
-    )
-
-
-    if arquivo is None:
-
-        return jsonify({
-            "sucesso": False,
-            "erro":
-                "Nenhum comprovante foi enviado."
-        }), 400
-
-
-    if arquivo.filename == "":
-
-        return jsonify({
-            "sucesso": False,
-            "erro":
-                "Arquivo inválido."
-        }), 400
-
-
-    if not extensao_permitida(
-        arquivo.filename
-    ):
-
-        return jsonify({
-            "sucesso": False,
-            "erro":
-                "Formato de arquivo não permitido. "
-                "Use JPG, JPEG, PNG, WEBP ou PDF."
         }), 400
 
 
@@ -1060,8 +1024,7 @@ def enviar_comprovante():
         SELECT
             id,
             numeros,
-            status,
-            expira_em
+            status
         FROM compras
         WHERE token = ?
     """, (token,)).fetchone()
@@ -1077,10 +1040,6 @@ def enviar_comprovante():
                 "Compra não encontrada."
         }), 404
 
-
-    # --------------------------------------------------------
-    # VERIFICAR STATUS
-    # --------------------------------------------------------
 
     if compra["status"] == "expirada":
 
@@ -1105,52 +1064,11 @@ def enviar_comprovante():
         }), 409
 
 
-    # --------------------------------------------------------
-    # NOVO NOME DO ARQUIVO
-    # --------------------------------------------------------
-
-    nome_original = secure_filename(
-        arquivo.filename
-    )
-
-
-    extensao = nome_original.rsplit(
-        ".",
-        1
-    )[1].lower()
-
-
-    nome_arquivo = (
-        f"{token}_"
-        f"{uuid.uuid4().hex}."
-        f"{extensao}"
-    )
-
-
-    caminho = os.path.join(
-        UPLOAD_FOLDER,
-        nome_arquivo
-    )
-
-
     try:
 
-        arquivo.save(
-            caminho
-        )
+        confirmado_em = agora()
 
-
-        enviado_em = agora()
-
-
-        # ----------------------------------------------------
-        # NOVO PRAZO
-        #
-        # Após o envio do comprovante, começa o prazo de
-        # 24 horas para confirmação.
-        # ----------------------------------------------------
-
-        expira_em = enviado_em + timedelta(
+        expira_em = confirmado_em + timedelta(
             hours=HORAS_EXPIRACAO
         )
 
@@ -1163,9 +1081,6 @@ def enviar_comprovante():
                 status =
                     'comprovante_enviado',
 
-                comprovante =
-                    ?,
-
                 comprovante_enviado_em =
                     ?,
 
@@ -1174,9 +1089,7 @@ def enviar_comprovante():
 
             WHERE token = ?
         """, (
-            nome_arquivo,
-
-            enviado_em.strftime(
+            confirmado_em.strftime(
                 "%Y-%m-%d %H:%M:%S"
             ),
 
@@ -1202,12 +1115,12 @@ def enviar_comprovante():
             numeros_texto = "?"
 
         enviar_email_notificacao(
-            "💰 Comprovante recebido - aguardando confirmação",
-            "Um comprovante foi enviado e está esperando você "
-            "confirmar no painel admin.\n\n"
+            "💰 Pagamento marcado como realizado",
+            "Alguém marcou o pagamento como realizado e foi "
+            "redirecionado para o formulário do Google. Confira "
+            "lá a confirmação e o comprovante.\n\n"
             f"Código da compra: {token}\n"
-            f"Números: {numeros_texto}\n"
-            f"Arquivo: {nome_arquivo}"
+            f"Números: {numeros_texto}"
         )
 
 
@@ -1216,15 +1129,10 @@ def enviar_comprovante():
             "sucesso": True,
 
             "mensagem":
-                "Comprovante enviado com sucesso.",
-
-            "arquivo":
-                nome_arquivo,
+                "Pagamento marcado como realizado.",
 
             "expira_em":
-                expira_em.strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
+                data_para_json(expira_em)
 
         })
 
@@ -1234,70 +1142,16 @@ def enviar_comprovante():
         conexao.rollback()
         conexao.close()
 
-
-        # Se salvou o arquivo mas ocorreu erro no banco,
-        # remove o arquivo para não deixar lixo.
-
-        if os.path.exists(caminho):
-
-            try:
-
-                os.remove(caminho)
-
-            except Exception:
-
-                pass
-
-
         print(
-            "Erro no upload:",
+            "Erro ao marcar pagamento como realizado:",
             erro
         )
 
-
         return jsonify({
             "sucesso": False,
             "erro":
-                "Não foi possível salvar o comprovante."
+                "Não foi possível registrar a confirmação."
         }), 500
-
-
-# ============================================================
-# SERVIR COMPROVANTE
-# ============================================================
-
-@app.route(
-    "/api/comprovantes/<nome_arquivo>",
-    methods=["GET"]
-)
-def baixar_comprovante(nome_arquivo):
-
-    # Apenas nome do arquivo, evitando caminhos externos
-
-    nome_arquivo = os.path.basename(
-        nome_arquivo
-    )
-
-
-    caminho = os.path.join(
-        UPLOAD_FOLDER,
-        nome_arquivo
-    )
-
-
-    if not os.path.isfile(caminho):
-
-        return jsonify({
-            "sucesso": False,
-            "erro":
-                "Comprovante não encontrado."
-        }), 404
-
-
-    return send_from_directory(
-        UPLOAD_FOLDER,
-        nome_arquivo
-    )
 
 
 # ============================================================
@@ -1763,19 +1617,19 @@ def admin_compras():
                 compra["status"],
 
             "criado_em":
-                compra["criado_em"],
+                data_para_json(compra["criado_em"]),
 
             "comprovante":
                 compra["comprovante"],
 
             "comprovante_enviado_em":
-                compra["comprovante_enviado_em"],
+                data_para_json(compra["comprovante_enviado_em"]),
 
             "expira_em":
-                compra["expira_em"],
+                data_para_json(compra["expira_em"]),
 
             "confirmado_em":
-                compra["confirmado_em"]
+                data_para_json(compra["confirmado_em"])
 
         })
 
