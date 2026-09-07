@@ -27,7 +27,7 @@ const RIFA_CONFIG = {
         window.location.protocol === "file:"
     )
         ? "http://127.0.0.1:5000"
-        : "https://TROQUE-PELA-URL-DO-SEU-BACKEND.onrender.com",
+        : "https://palmeiras-elenco-2026.onrender.com/",
 
 
     // -----------------------------------------------------------
