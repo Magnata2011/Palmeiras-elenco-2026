@@ -1,0 +1,1025 @@
+/* =====================================
+   RESET
+   ===================================== */
+
+* {
+    box-sizing: border-box;
+
+    margin: 0;
+
+    padding: 0;
+}
+
+
+body {
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f5f6f8,
+            #e9ebef
+        );
+
+    color: #222;
+
+    min-height: 100vh;
+}
+
+
+/* =====================================
+   CABEÇALHO
+   ===================================== */
+
+.cabecalho,
+.cabecalho-pagamento {
+    background: #006437;
+
+    color: white;
+
+    padding: 28px 20px;
+
+    text-align: center;
+
+    box-shadow:
+        0 3px 12px rgba(0, 0, 0, 0.15);
+}
+
+
+.cabecalho h1,
+.cabecalho-pagamento h1 {
+    font-size: 30px;
+
+    margin-bottom: 6px;
+}
+
+
+.cabecalho p,
+.cabecalho-pagamento p {
+    color: #aaa;
+
+    font-size: 14px;
+}
+
+
+/* =====================================
+   PÁGINA
+   ===================================== */
+
+.pagina-pagamento {
+    width: min(720px, 94%);
+
+    margin: 30px auto 50px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 18px;
+}
+
+
+/* =====================================
+   CARDS
+   ===================================== */
+
+.card-pagamento,
+.resumo-pagamento,
+.area-pagamento {
+    background: white;
+
+    border-radius: 16px;
+
+    padding: 25px;
+
+    box-shadow:
+        0 4px 18px rgba(0, 0, 0, 0.08);
+}
+
+
+/* =====================================
+   TÍTULOS
+   ===================================== */
+
+.titulo-secao {
+    display: flex;
+
+    align-items: center;
+
+    gap: 13px;
+
+    margin-bottom: 20px;
+}
+
+
+.icone {
+    width: 44px;
+
+    height: 44px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background: #f0f0f0;
+
+    border-radius: 11px;
+
+    font-size: 21px;
+}
+
+
+.titulo-secao h2 {
+    font-size: 20px;
+
+    margin-bottom: 3px;
+}
+
+
+.titulo-secao p {
+    color: #777;
+
+    font-size: 13px;
+}
+
+
+/* =====================================
+   LISTA DE NÚMEROS
+   ===================================== */
+
+.lista-pagamento {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 7px;
+
+    padding: 5px 0 18px;
+
+    border-bottom: 1px solid #eee;
+}
+
+
+.numero-pagamento {
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    min-width: 45px;
+
+    padding: 8px 10px;
+
+    background: #006437;
+
+    color: white;
+
+    border-radius: 7px;
+
+    font-size: 13px;
+
+    font-weight: bold;
+}
+
+
+/* =====================================
+   INFORMAÇÕES
+   ===================================== */
+
+.informacoes-pagamento {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding-top: 18px;
+}
+
+
+.info-item {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 5px;
+}
+
+
+.info-item span {
+    color: #777;
+
+    font-size: 13px;
+}
+
+
+.info-item strong {
+    font-size: 18px;
+}
+
+
+.linha-info {
+    width: 1px;
+
+    height: 35px;
+
+    background: #ddd;
+}
+
+
+/* =====================================
+   VALOR PIX
+   ===================================== */
+
+.valor-box {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    background: #f5f5f5;
+
+    border-radius: 10px;
+
+    padding: 15px 18px;
+
+    margin-bottom: 20px;
+}
+
+
+.valor-box span {
+    color: #666;
+
+    font-size: 14px;
+}
+
+
+.valor-pix {
+    font-size: 25px;
+
+    color: #222;
+}
+
+
+/* =====================================
+   QR CODE
+   ===================================== */
+
+.qr-area {
+    text-align: center;
+
+    padding: 5px 0 20px;
+}
+
+
+.qr-code {
+    width: 230px;
+
+    height: 230px;
+
+    margin: auto;
+
+    background: white;
+
+    border: 1px solid #ddd;
+
+    border-radius: 12px;
+
+    padding: 10px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+}
+
+
+.qr-code img {
+    width: 100%;
+
+    height: 100%;
+
+    object-fit: contain;
+}
+
+
+.qr-area p {
+    color: #777;
+
+    font-size: 13px;
+
+    margin-top: 12px;
+}
+
+
+/* =====================================
+   PIX COPIA E COLA
+   ===================================== */
+
+.pix-copia {
+    border-top: 1px solid #eee;
+
+    padding-top: 20px;
+}
+
+
+.pix-copia label {
+    display: block;
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+    margin-bottom: 8px;
+}
+
+
+.pix-input {
+    display: flex;
+
+    gap: 8px;
+}
+
+
+.pix-input input {
+    flex: 1;
+
+    min-width: 0;
+
+    padding: 12px;
+
+    border: 1px solid #ccc;
+
+    border-radius: 8px;
+
+    background: #f7f7f7;
+
+    color: #555;
+
+    font-size: 13px;
+}
+
+
+.pix-input button {
+    border: none;
+
+    background: #006437;
+
+    color: white;
+
+    padding: 0 18px;
+
+    border-radius: 8px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+
+.pix-input button:hover {
+    background: #004e2b;
+}
+
+
+/* =====================================
+   TIMER
+   ===================================== */
+
+.timer-area {
+    background: white;
+
+    border-radius: 16px;
+
+    padding: 25px;
+
+    text-align: center;
+
+    box-shadow:
+        0 4px 18px rgba(0, 0, 0, 0.08);
+}
+
+
+.timer-area p {
+    color: #666;
+
+    font-size: 14px;
+
+    margin-bottom: 10px;
+}
+
+
+.timer {
+    font-size: 42px;
+
+    font-weight: bold;
+
+    color: #222;
+
+    letter-spacing: 2px;
+
+    margin-bottom: 8px;
+}
+
+
+.timer-urgente {
+    color: #c82333 !important;
+
+    animation: pulsarTimer 1s infinite;
+}
+
+
+@keyframes pulsarTimer {
+
+    0%, 100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+
+}
+
+
+#mensagemTimer {
+    display: block;
+
+    color: #999;
+
+    font-size: 12px;
+}
+
+
+/* =====================================
+   ENVIO DE COMPROVANTE
+   ===================================== */
+
+.area-comprovante {
+    background: white;
+
+    border-radius: 16px;
+
+    padding: 25px;
+
+    box-shadow:
+        0 4px 18px rgba(0, 0, 0, 0.08);
+}
+
+
+.area-comprovante h2 {
+    font-size: 20px;
+
+    margin-bottom: 10px;
+}
+
+
+.area-comprovante p {
+    color: #666;
+
+    font-size: 14px;
+
+    margin-bottom: 18px;
+
+    line-height: 1.5;
+}
+
+
+.upload-comprovante {
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    flex-wrap: wrap;
+
+    margin-bottom: 15px;
+}
+
+
+.botao-selecionar-arquivo {
+    display: inline-block;
+
+    background: #eee;
+
+    color: #222;
+
+    padding: 12px 18px;
+
+    border-radius: 8px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+
+.botao-selecionar-arquivo:hover {
+    background: #ddd;
+}
+
+
+#nomeArquivo {
+    color: #666;
+
+    font-size: 13px;
+
+    word-break: break-all;
+}
+
+
+.botao-enviar-comprovante {
+    width: 100%;
+
+    border: none;
+
+    background: #006437;
+
+    color: white;
+
+    padding: 14px;
+
+    border-radius: 9px;
+
+    font-weight: bold;
+
+    font-size: 14px;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+
+.botao-enviar-comprovante:hover:not(:disabled) {
+    background: #004e2b;
+}
+
+
+.botao-enviar-comprovante:disabled {
+    background: #ccc;
+
+    cursor: not-allowed;
+}
+
+
+.progresso-upload {
+    margin-top: 12px;
+
+    text-align: center;
+
+    color: #006437;
+
+    font-weight: bold;
+
+    font-size: 13px;
+}
+
+
+/* =====================================
+   AÇÕES
+   ===================================== */
+
+.acoes-pagamento {
+    display: flex;
+
+    gap: 10px;
+}
+
+
+.acoes-pagamento button {
+    flex: 1;
+
+    padding: 14px;
+
+    border-radius: 9px;
+
+    font-weight: bold;
+
+    font-size: 14px;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+
+/* =====================================
+   CANCELAR
+   ===================================== */
+
+.botao-cancelar {
+    border: 1px solid #ccc;
+
+    background: white;
+
+    color: #555;
+}
+
+
+.botao-cancelar:hover {
+    background: #f3f3f3;
+}
+
+
+/* =====================================
+   PAGAMENTO REALIZADO
+   ===================================== */
+
+.botao-pagamento-realizado {
+    border: none;
+
+    background: #006437;
+
+    color: white;
+}
+
+
+.botao-pagamento-realizado:hover {
+    background: #004e2b;
+
+    transform: translateY(-1px);
+}
+
+
+/* =====================================
+   REDIRECIONAMENTO PARA O FORMULÁRIO
+   ===================================== */
+
+.area-redirecionamento {
+    background: white;
+
+    border-radius: 16px;
+
+    padding: 30px 25px;
+
+    text-align: center;
+
+    box-shadow:
+        0 4px 18px rgba(0, 0, 0, 0.08);
+
+    animation: aparecer 0.25s ease;
+}
+
+
+@keyframes aparecer {
+
+    from {
+        opacity: 0;
+
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+
+        transform: translateY(0);
+    }
+
+}
+
+
+.area-redirecionamento h2 {
+    font-size: 20px;
+
+    margin-bottom: 10px;
+
+    color: #006437;
+}
+
+
+.area-redirecionamento p {
+    color: #666;
+
+    font-size: 14px;
+
+    margin-bottom: 18px;
+
+    line-height: 1.5;
+}
+
+
+.botao-ir-formulario {
+    display: inline-block;
+
+    background: #006437;
+
+    color: white;
+
+    text-decoration: none;
+
+    padding: 13px 22px;
+
+    border-radius: 9px;
+
+    font-weight: bold;
+
+    font-size: 14px;
+
+    transition: 0.2s;
+}
+
+
+.botao-ir-formulario:hover {
+    background: #004e2b;
+}
+
+
+/* =====================================
+   VOLTAR
+   ===================================== */
+
+.botao-voltar-pagamento {
+    width: 100%;
+
+    margin-top: 15px;
+
+    padding: 12px;
+
+    border: none;
+
+    background: #eee;
+
+    color: #444;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    font-weight: bold;
+}
+
+
+.botao-voltar-pagamento:hover {
+    background: #ddd;
+}
+
+
+/* =====================================
+   DÚVIDAS PELO WHATSAPP
+   ===================================== */
+
+.area-duvidas {
+    background: white;
+
+    border-radius: 16px;
+
+    padding: 20px 25px;
+
+    box-shadow:
+        0 4px 18px rgba(0, 0, 0, 0.08);
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 18px;
+
+    flex-wrap: wrap;
+}
+
+
+.duvidas-texto {
+    flex: 1;
+
+    min-width: 180px;
+}
+
+
+.duvidas-texto h2 {
+    font-size: 17px;
+
+    margin-bottom: 6px;
+}
+
+
+.duvidas-texto p {
+    color: #666;
+
+    font-size: 13px;
+
+    margin-bottom: 10px;
+}
+
+
+.duvidas-texto a {
+    color: #006437;
+
+    font-weight: bold;
+
+    font-size: 13px;
+
+    text-decoration: none;
+}
+
+
+.duvidas-texto a:hover {
+    text-decoration: underline;
+}
+
+
+.duvidas-qr img {
+    width: 100px;
+
+    height: 100px;
+
+    border-radius: 8px;
+
+    border: 1px solid #eee;
+}
+
+
+@media (max-width: 500px) {
+
+    .area-duvidas {
+        flex-direction: column;
+
+        text-align: center;
+    }
+
+}
+
+
+/* =====================================
+   MODAL (confirmação do arquivo do comprovante)
+   ===================================== */
+
+.modal-overlay {
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 200;
+
+    background: rgba(0, 0, 0, 0.6);
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 20px;
+}
+
+
+.modal {
+    width: min(480px, 100%);
+
+    background: white;
+
+    border-radius: 16px;
+
+    padding: 26px;
+
+    box-shadow:
+        0 15px 50px rgba(0, 0, 0, 0.25);
+}
+
+
+.modal h2 {
+    margin-bottom: 14px;
+
+    font-size: 20px;
+
+    color: #004e2b;
+}
+
+
+.modal p {
+    color: #444;
+
+    font-size: 14px;
+
+    line-height: 1.5;
+
+    margin-bottom: 0;
+}
+
+
+.modal-botoes {
+    display: flex;
+
+    gap: 10px;
+
+    margin-top: 22px;
+}
+
+
+.modal-botoes button {
+    flex: 1;
+
+    border: none;
+
+    padding: 13px;
+
+    border-radius: 8px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+
+.botao-voltar {
+    background: #eee;
+
+    color: #006437;
+}
+
+
+.botao-voltar:hover {
+    background: #ddd;
+}
+
+
+.botao-continuar {
+    background: #006437;
+
+    color: white;
+}
+
+
+.botao-continuar:hover {
+    background: #004e2b;
+}
+
+
+/* =====================================
+   CELULAR
+   ===================================== */
+
+@media (max-width: 600px) {
+
+    .cabecalho-pagamento {
+        padding: 22px 15px;
+    }
+
+
+    .cabecalho-pagamento h1 {
+        font-size: 26px;
+    }
+
+
+    .pagina-pagamento {
+        width: 94%;
+
+        margin-top: 18px;
+    }
+
+
+    .card-pagamento {
+        padding: 18px;
+    }
+
+
+    .titulo-secao h2 {
+        font-size: 18px;
+    }
+
+
+    .qr-code {
+        width: 200px;
+
+        height: 200px;
+    }
+
+
+    .pix-input {
+        flex-direction: column;
+    }
+
+
+    .pix-input button {
+        padding: 12px;
+    }
+
+
+    .acoes-pagamento {
+        flex-direction: column;
+    }
+
+
+    .opcoes-envio {
+        grid-template-columns: 1fr;
+    }
+
+
+    .informacoes-pagamento {
+        gap: 15px;
+    }
+
+}

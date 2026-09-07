@@ -1,0 +1,712 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    color: #222;
+}
+
+
+/* =====================================
+   CABEÇALHO
+   ===================================== */
+
+.cabecalho-admin {
+    background: #006437;
+    color: white;
+
+    padding: 20px 30px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 20px;
+
+    flex-wrap: wrap;
+}
+
+
+.cabecalho-admin h1 {
+    font-size: 25px;
+}
+
+
+.cabecalho-admin p {
+    margin-top: 5px;
+    opacity: 0.85;
+}
+
+
+.cabecalho-admin-acoes {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+
+.usuario-logado {
+    font-size: 13px;
+    opacity: 0.85;
+}
+
+
+.voltar-site,
+.botao-sair {
+    color: white;
+    text-decoration: none;
+
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    padding: 10px 15px;
+
+    border-radius: 8px;
+
+    background: transparent;
+
+    font-size: 14px;
+
+    cursor: pointer;
+}
+
+
+.voltar-site:hover,
+.botao-sair:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+
+/* =====================================
+   PAINEL
+   ===================================== */
+
+.painel {
+    width: min(1200px, 94%);
+    margin: 30px auto;
+}
+
+
+/* =====================================
+   CARDS
+   ===================================== */
+
+.estatisticas {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 15px;
+
+    margin-bottom: 25px;
+}
+
+
+.card {
+    background: white;
+
+    padding: 20px;
+
+    border-radius: 12px;
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.08);
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 8px;
+}
+
+
+.card span {
+    color: #666;
+}
+
+
+.card strong {
+    font-size: 30px;
+}
+
+
+.estatistica-disponivel strong {
+    color: #218838;
+}
+
+
+.estatistica-pendente strong {
+    color: #e67e00;
+}
+
+
+.estatistica-indisponivel strong {
+    color: #c82333;
+}
+
+
+/* =====================================
+   CONTROLE
+   ===================================== */
+
+.controle {
+    background: white;
+
+    padding: 25px;
+
+    border-radius: 12px;
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.08);
+
+    margin-bottom: 25px;
+}
+
+
+.controle h2 {
+    margin-bottom: 18px;
+}
+
+
+.pesquisa {
+    display: flex;
+    gap: 10px;
+}
+
+
+.pesquisa input {
+    flex: 1;
+
+    padding: 12px;
+
+    border: 1px solid #ccc;
+    border-radius: 7px;
+
+    font-size: 16px;
+}
+
+
+.pesquisa button,
+.lista-cabecalho button {
+    border: none;
+
+    background: #006437;
+    color: white;
+
+    padding: 12px 20px;
+
+    border-radius: 7px;
+
+    cursor: pointer;
+}
+
+
+.pesquisa button:hover,
+.lista-cabecalho button:hover {
+    background: #004e2b;
+}
+
+
+/* =====================================
+   MENSAGEM
+   ===================================== */
+
+.mensagem {
+    margin-top: 12px;
+
+    font-weight: bold;
+}
+
+
+/* =====================================
+   RESULTADO
+   ===================================== */
+
+.resultado {
+    margin-top: 20px;
+
+    border-top: 1px solid #ddd;
+
+    padding-top: 20px;
+}
+
+
+.numero-grande,
+.status-atual {
+    display: flex;
+    flex-direction: column;
+
+    gap: 5px;
+
+    margin-bottom: 15px;
+}
+
+
+.numero-grande strong {
+    font-size: 40px;
+}
+
+
+.status-atual strong {
+    font-size: 20px;
+}
+
+
+/* =====================================
+   BOTÕES
+   ===================================== */
+
+.acoes {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 10px;
+}
+
+
+.botao {
+    border: none;
+
+    padding: 12px 18px;
+
+    border-radius: 7px;
+
+    cursor: pointer;
+
+    font-weight: bold;
+}
+
+
+.botao-disponivel {
+    background: #d4edda;
+    color: #155724;
+}
+
+
+.botao-pendente {
+    background: #ffe0b2;
+    color: #8a4b00;
+}
+
+
+.botao-indisponivel {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+
+.botao:hover {
+    filter: brightness(0.95);
+}
+
+
+/* =====================================
+   COMPRAS E COMPROVANTES
+   ===================================== */
+
+.compras-section {
+    background: white;
+
+    padding: 25px;
+
+    border-radius: 12px;
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.08);
+
+    margin-bottom: 25px;
+}
+
+
+.resumo-arrecadado {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    background: #f4f4f4;
+
+    border-radius: 10px;
+
+    padding: 15px 18px;
+
+    margin: 15px 0;
+}
+
+
+.resumo-arrecadado span {
+    color: #666;
+
+    font-size: 14px;
+}
+
+
+.resumo-arrecadado strong {
+    font-size: 24px;
+
+    color: #218838;
+}
+
+
+.filtros-compras {
+    display: flex;
+
+    gap: 8px;
+
+    margin-bottom: 15px;
+
+    flex-wrap: wrap;
+}
+
+
+.filtro-compra {
+    border: 1px solid #ccc;
+
+    background: white;
+
+    color: #444;
+
+    padding: 8px 14px;
+
+    border-radius: 20px;
+
+    cursor: pointer;
+
+    font-size: 13px;
+}
+
+
+.filtro-compra.ativo {
+    background: #006437;
+
+    color: white;
+
+    border-color: #006437;
+}
+
+
+.lista-compras {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 12px;
+}
+
+
+.compra-card {
+    border: 1px solid #eee;
+
+    border-radius: 10px;
+
+    padding: 16px;
+}
+
+
+.compra-card-topo {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: flex-start;
+
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    margin-bottom: 10px;
+}
+
+
+.compra-numeros-lista {
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 5px;
+
+    margin-bottom: 10px;
+}
+
+
+.compra-numero-chip {
+    background: #f0f0f0;
+
+    color: #333;
+
+    padding: 4px 8px;
+
+    border-radius: 5px;
+
+    font-size: 12px;
+
+    font-weight: bold;
+}
+
+
+.compra-info {
+    font-size: 13px;
+
+    color: #666;
+
+    line-height: 1.6;
+}
+
+
+.compra-info strong {
+    color: #222;
+}
+
+
+.compra-badge {
+    display: inline-block;
+
+    padding: 5px 12px;
+
+    border-radius: 20px;
+
+    font-size: 12px;
+
+    font-weight: bold;
+
+    white-space: nowrap;
+}
+
+
+.compra-badge.pendente_pagamento {
+    background: #fff3cd;
+    color: #664d03;
+}
+
+
+.compra-badge.comprovante_enviado {
+    background: #cfe2ff;
+    color: #084298;
+}
+
+
+.compra-badge.confirmada {
+    background: #d4edda;
+    color: #155724;
+}
+
+
+.compra-badge.cancelada,
+.compra-badge.expirada {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+
+.compra-acoes {
+    display: flex;
+
+    gap: 8px;
+
+    flex-wrap: wrap;
+
+    margin-top: 12px;
+}
+
+
+.compra-acoes a,
+.compra-acoes button {
+    border: none;
+
+    padding: 10px 14px;
+
+    border-radius: 7px;
+
+    font-weight: bold;
+
+    font-size: 13px;
+
+    cursor: pointer;
+
+    text-decoration: none;
+
+    display: inline-block;
+}
+
+
+.botao-ver-comprovante {
+    background: #eee;
+
+    color: #222;
+}
+
+
+.botao-ver-comprovante:hover {
+    background: #ddd;
+}
+
+
+.botao-confirmar-compra {
+    background: #d4edda;
+
+    color: #155724;
+}
+
+
+.botao-confirmar-compra:hover {
+    background: #c3e6cb;
+}
+
+
+.botao-rejeitar-compra {
+    background: #f8d7da;
+
+    color: #721c24;
+}
+
+
+.botao-rejeitar-compra:hover {
+    background: #f5c6cb;
+}
+
+
+.compra-vazio {
+    text-align: center;
+
+    color: #999;
+
+    padding: 30px 0;
+}
+
+
+/* =====================================
+   LISTA
+   ===================================== */
+
+.lista-section {
+    background: white;
+
+    padding: 25px;
+
+    border-radius: 12px;
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+
+.lista-cabecalho {
+    display: flex;
+
+    justify-content: space-between;
+    align-items: center;
+
+    margin-bottom: 20px;
+}
+
+
+.lista-numeros {
+    display: grid;
+
+    grid-template-columns:
+        repeat(10, 1fr);
+
+    gap: 6px;
+}
+
+
+.numero-admin {
+    border: none;
+
+    padding: 10px 5px;
+
+    border-radius: 5px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+
+.numero-admin.disponivel {
+    background: #d4edda;
+    color: #155724;
+}
+
+
+.numero-admin.pendente {
+    background: #ffe0b2;
+    color: #8a4b00;
+}
+
+
+.numero-admin.indisponivel {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+
+.numero-admin:hover {
+    transform: scale(1.04);
+}
+
+
+/* =====================================
+   RESPONSIVO
+   ===================================== */
+
+@media (
+    max-width: 800px
+) {
+
+    .estatisticas {
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+
+    .lista-numeros {
+        grid-template-columns:
+            repeat(5, 1fr);
+    }
+
+}
+
+
+@media (
+    max-width: 500px
+) {
+
+    .cabecalho-admin {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+
+    .estatisticas {
+        grid-template-columns:
+            1fr;
+    }
+
+
+    .pesquisa {
+        flex-direction: column;
+    }
+
+
+    .acoes {
+        flex-direction: column;
+    }
+
+
+    .botao {
+        width: 100%;
+    }
+
+
+    .lista-numeros {
+        grid-template-columns:
+            repeat(4, 1fr);
+    }
+
+}

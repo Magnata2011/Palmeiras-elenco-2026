@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+    <title>Pagamento - Rifa</title>
+
+    <link
+        rel="stylesheet"
+        href="pagamento.css">
+
+    <script src="config.js"></script>
+
+</head>
+
+
+<body>
+
+    <!-- =====================================
+         CABEÇALHO
+         ===================================== -->
+
+    <header class="cabecalho">
+
+        <h1>Pagamento</h1>
+
+        <p>
+            Finalize o pagamento da sua rifa
+        </p>
+
+    </header>
+
+
+    <!-- =====================================
+         CONTEÚDO
+         ===================================== -->
+
+    <main class="pagina-pagamento">
+
+
+        <!-- =================================
+             RESUMO
+             ================================= -->
+
+        <section class="resumo-pagamento">
+
+            <h2>
+                Seus números
+            </h2>
+
+
+            <div
+                id="listaPagamento"
+                class="lista-pagamento">
+            </div>
+
+
+            <div class="informacoes-pagamento">
+
+                <div>
+
+                    <span>
+                        Quantidade
+                    </span>
+
+                    <strong id="quantidadePagamento">
+                        0 números
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Total
+                    </span>
+
+                    <strong id="totalPagamento">
+                        R$ 0,00
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================
+             TIMER
+             ================================= -->
+
+        <section class="timer-area">
+
+            <p>
+                Tempo restante para realizar o pagamento:
+            </p>
+
+            <div
+                id="timer"
+                class="timer">
+
+                05:00
+
+            </div>
+
+            <small id="mensagemTimer">
+                Sua reserva será liberada automaticamente
+                quando o tempo acabar.
+            </small>
+
+        </section>
+
+
+        <!-- =================================
+             PAGAMENTO PIX
+             ================================= -->
+
+        <section
+            id="areaPagamento"
+            class="area-pagamento">
+
+            <h2>
+                Pague por Pix
+            </h2>
+
+
+            <p>
+                Valor a pagar:
+            </p>
+
+
+            <strong
+                id="valorPix"
+                class="valor-pix">
+
+                R$ 0,00
+
+            </strong>
+
+
+            <!-- QR CODE -->
+
+            <div class="qr-code">
+
+                <img
+                    src="qrcode-pix.png"
+                    alt="QR Code Pix">
+
+            </div>
+
+
+            <!-- PIX COPIA E COLA -->
+
+            <div class="pix-copia">
+
+                <label for="codigoPix">
+
+                    Pix copia e cola
+
+                </label>
+
+
+                <div class="pix-input">
+
+                    <input
+                        id="codigoPix"
+                        type="text"
+                        value="COLOQUE-SEU-CODIGO-PIX-AQUI"
+                        readonly>
+
+
+                    <button
+                        id="copiarPix"
+                        type="button">
+
+                        Copiar
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================
+             BOTÕES PRINCIPAIS
+             ================================= -->
+
+        <section class="acoes-pagamento">
+
+
+            <button
+                id="voltarSelecionar"
+                class="botao-voltar-pagamento"
+                type="button">
+
+                ← Voltar e selecionar mais
+
+            </button>
+
+
+            <button
+                id="cancelar"
+                class="botao-cancelar"
+                type="button">
+
+                Cancelar compra
+
+            </button>
+
+
+            <button
+                id="pagamentoRealizado"
+                class="botao-pagamento-realizado"
+                type="button">
+
+                Já realizei o pagamento
+
+            </button>
+
+        </section>
+
+
+        <!-- =================================
+             ENVIO DO COMPROVANTE (estava faltando)
+             ================================= -->
+
+        <section
+            id="areaComprovante"
+            class="area-comprovante"
+            style="display: none;">
+
+            <h2>
+                Enviar comprovante de pagamento
+            </h2>
+
+            <p>
+                Anexe o comprovante do Pix (imagem ou PDF, até 10 MB).
+                Você tem até
+                <strong id="prazoComprovanteTexto">24 horas</strong>
+                para enviar, ou sua reserva será cancelada.
+            </p>
+
+            <div class="upload-comprovante">
+
+                <label
+                    for="arquivoComprovante"
+                    class="botao-selecionar-arquivo">
+
+                    Escolher arquivo
+
+                </label>
+
+                <input
+                    id="arquivoComprovante"
+                    type="file"
+                    accept="image/png, image/jpeg, image/webp, application/pdf"
+                    hidden>
+
+                <span id="nomeArquivo">
+                    Nenhum arquivo selecionado.
+                </span>
+
+            </div>
+
+            <button
+                id="enviarComprovante"
+                class="botao-enviar-comprovante"
+                type="button"
+                disabled>
+
+                Enviar comprovante
+
+            </button>
+
+            <p
+                id="progressoUpload"
+                class="progresso-upload"
+                style="display: none;">
+
+                Enviando comprovante...
+
+            </p>
+
+        </section>
+
+
+        <!-- =================================
+             REDIRECIONAMENTO PARA O FORMULÁRIO
+             ================================= -->
+
+        <section
+            id="areaRedirecionamento"
+            class="area-redirecionamento"
+            style="display: none;">
+
+            <h2>
+                Comprovante enviado!
+            </h2>
+
+            <p id="textoRedirecionamento">
+                Agora só falta confirmar no formulário. Você será
+                redirecionado automaticamente em instantes...
+            </p>
+
+            <a
+                id="linkFormulario"
+                class="botao-ir-formulario"
+                href="#"
+                target="_self">
+
+                Se não for redirecionado, clique aqui
+
+            </a>
+
+        </section>
+
+
+        <!-- =================================
+             DÚVIDAS PELO WHATSAPP
+             ================================= -->
+
+        <section class="area-duvidas">
+
+            <div class="duvidas-texto">
+
+                <h2>
+                    Ficou com dúvida?
+                </h2>
+
+                <p>
+                    Escaneie o QR Code ou clique no link para falar
+                    com a gente pelo WhatsApp.
+                </p>
+
+                <a
+                    id="linkDuvidasWhatsapp"
+                    href="#"
+                    target="_blank"
+                    rel="noopener noreferrer">
+
+                    Abrir conversa no WhatsApp
+
+                </a>
+
+            </div>
+
+            <div class="duvidas-qr">
+
+                <img
+                    id="qrDuvidasWhatsapp"
+                    alt="QR Code do WhatsApp para dúvidas">
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- =====================================
+         MODAL: CONFIRMAR ARQUIVO DO COMPROVANTE
+         ===================================== -->
+
+    <div
+        id="modalConfirmarArquivo"
+        class="modal-overlay"
+        style="display: none;">
+
+        <div class="modal">
+
+            <h2>
+                Confirme o comprovante
+            </h2>
+
+            <p>
+                O arquivo <strong id="nomeArquivoModal"></strong>
+                é realmente o seu comprovante de pagamento?
+            </p>
+
+            <div class="modal-botoes">
+
+                <button
+                    id="arquivoNao"
+                    class="botao-voltar"
+                    type="button">
+
+                    Não, escolher outro
+
+                </button>
+
+                <button
+                    id="arquivoSim"
+                    class="botao-continuar"
+                    type="button">
+
+                    Sim, esse é meu comprovante
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================
+         JAVASCRIPT
+         ===================================== -->
+
+    <script src="pagamento.js"></script>
+
+</body>
+
+</html>

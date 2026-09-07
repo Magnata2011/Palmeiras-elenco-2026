@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+    <title>Painel Administrativo - Rifa</title>
+
+    <link
+        rel="stylesheet"
+        href="Admin.css">
+
+    <script src="config.js"></script>
+
+</head>
+
+
+<body>
+
+
+    <header class="cabecalho-admin">
+
+        <div>
+
+            <h1>
+                Painel Administrativo
+            </h1>
+
+            <p>
+                Gerenciamento da Rifa
+            </p>
+
+        </div>
+
+        <div class="cabecalho-admin-acoes">
+
+            <span
+                id="usuarioLogadoTexto"
+                class="usuario-logado">
+            </span>
+
+            <a
+                href="index.html"
+                class="voltar-site">
+
+                Voltar para o site
+
+            </a>
+
+            <button
+                id="sairAdmin"
+                class="botao-sair"
+                type="button">
+
+                Sair
+
+            </button>
+
+        </div>
+
+    </header>
+
+
+
+    <main class="painel">
+
+
+        <!-- =================================
+             ESTATÍSTICAS
+             ================================= -->
+
+        <section class="estatisticas">
+
+            <div class="card estatistica-disponivel">
+
+                <span>
+                    Disponíveis
+                </span>
+
+                <strong
+                    id="totalDisponiveis">
+
+                    0
+
+                </strong>
+
+            </div>
+
+
+            <div class="card estatistica-pendente">
+
+                <span>
+                    Pendentes
+                </span>
+
+                <strong
+                    id="totalPendentes">
+
+                    0
+
+                </strong>
+
+            </div>
+
+
+            <div class="card estatistica-indisponivel">
+
+                <span>
+                    Confirmados
+                </span>
+
+                <strong
+                    id="totalIndisponiveis">
+
+                    0
+
+                </strong>
+
+            </div>
+
+
+            <div class="card">
+
+                <span>
+                    Total
+                </span>
+
+                <strong
+                    id="totalNumeros">
+
+                    1000
+
+                </strong>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =================================
+             PESQUISA
+             ================================= -->
+
+        <section class="controle">
+
+            <h2>
+                Gerenciar número
+            </h2>
+
+
+            <div class="pesquisa">
+
+                <input
+                    id="numeroPesquisa"
+                    type="number"
+                    min="1"
+                    max="1000"
+                    placeholder="Digite o número">
+
+                <button
+                    id="buscarNumero"
+                    type="button">
+
+                    Buscar
+
+                </button>
+
+            </div>
+
+
+            <p
+                id="mensagem"
+                class="mensagem">
+            </p>
+
+
+            <div
+                id="resultadoNumero"
+                class="resultado"
+                style="display: none;">
+
+
+                <div class="numero-grande">
+
+                    <span>
+                        Número
+                    </span>
+
+                    <strong
+                        id="numeroResultado">
+
+                        000
+
+                    </strong>
+
+                </div>
+
+
+                <div class="status-atual">
+
+                    <span>
+                        Status atual
+                    </span>
+
+                    <strong
+                        id="statusResultado">
+
+                        -
+
+                    </strong>
+
+                </div>
+
+
+                <div class="acoes">
+
+
+                    <button
+                        id="marcarDisponivel"
+                        class="botao botao-disponivel"
+                        type="button">
+
+                        🟢 Liberar
+
+                    </button>
+
+
+                    <button
+                        id="marcarPendente"
+                        class="botao botao-pendente"
+                        type="button">
+
+                        🟠 Marcar pendente
+
+                    </button>
+
+
+                    <button
+                        id="marcarIndisponivel"
+                        class="botao botao-indisponivel"
+                        type="button">
+
+                        🔴 Marcar como pago
+
+                    </button>
+
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =================================
+             COMPRAS E COMPROVANTES
+             ================================= -->
+
+        <section class="compras-section">
+
+            <div class="lista-cabecalho">
+
+                <h2>
+                    Compras e comprovantes
+                </h2>
+
+                <button
+                    id="atualizarCompras"
+                    type="button">
+
+                    ↻ Atualizar
+
+                </button>
+
+            </div>
+
+            <div class="resumo-arrecadado">
+
+                <span>
+                    Total arrecadado (números confirmados)
+                </span>
+
+                <strong id="totalArrecadado">
+                    R$ 0,00
+                </strong>
+
+            </div>
+
+            <div class="filtros-compras">
+
+                <button
+                    class="filtro-compra ativo"
+                    data-filtro="pendentes"
+                    type="button">
+
+                    Precisam de atenção
+
+                </button>
+
+                <button
+                    class="filtro-compra"
+                    data-filtro="todas"
+                    type="button">
+
+                    Todas
+
+                </button>
+
+            </div>
+
+            <p
+                id="mensagemCompras"
+                class="mensagem">
+            </p>
+
+            <div
+                id="listaCompras"
+                class="lista-compras">
+            </div>
+
+        </section>
+
+
+        <!-- =================================
+             LISTA
+             ================================= -->
+
+        <section class="lista-section">
+
+            <div class="lista-cabecalho">
+
+                <h2>
+                    Números da Rifa
+                </h2>
+
+
+                <button
+                    id="atualizar"
+                    type="button">
+
+                    ↻ Atualizar
+
+                </button>
+
+            </div>
+
+
+            <div
+                id="listaNumeros"
+                class="lista-numeros">
+            </div>
+
+        </section>
+
+
+    </main>
+
+
+    <script src="Admin.js"></script>
+
+
+</body>
+
+</html>

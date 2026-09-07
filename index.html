@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+    <title>Rifa</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <script src="config.js"></script>
+
+</head>
+
+
+<body>
+
+
+    <!-- ============================== -->
+    <!-- CABEÇALHO -->
+    <!-- ============================== -->
+
+    <header class="cabecalho">
+
+        <h1>Ação solidária entre amigos</h1>
+
+        <p>
+            Escolha seus números
+        </p>
+
+
+        <button
+            id="botaoHistoria"
+            class="link-historia"
+            type="button">
+
+            Conheça a história
+
+        </button>
+
+
+        <button
+            id="botaoAdmin"
+            class="botao-admin-topo"
+            type="button">
+
+            Administrador
+
+        </button>
+
+    </header>
+
+
+
+    <!-- ============================== -->
+    <!-- AVISO DE COMPRA EM ANDAMENTO -->
+    <!-- ============================== -->
+
+    <div
+        id="avisoCompraAndamento"
+        class="aviso-compra-andamento"
+        style="display: none;">
+
+        <span>
+            Você tem uma compra em andamento.
+        </span>
+
+        <div class="aviso-botoes">
+
+            <button
+                id="continuarCompraAndamento"
+                type="button">
+
+                Continuar compra
+
+            </button>
+
+            <button
+                id="descartarCompraAndamento"
+                type="button">
+
+                Descartar
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ============================== -->
+    <!-- ÁREA PRINCIPAL -->
+    <!-- ============================== -->
+
+    <main class="pagina-principal">
+
+
+        <section class="area-numeros">
+
+            <h2>
+                Selecione seus números
+            </h2>
+
+            <p
+                id="instrucaoPreco"
+                class="instrucao">
+
+                Cada número custa R$ 30,00.
+
+            </p>
+
+
+            <!-- O JAVASCRIPT COLOCA OS 1000 BOTÕES AQUI -->
+
+            <div
+                id="numeros"
+                class="grade-numeros">
+            </div>
+
+        </section>
+
+
+
+        <!-- ============================== -->
+        <!-- BANNERS -->
+        <!-- ============================== -->
+
+        <aside class="banner-area">
+
+            <a
+                class="banner banner-clicavel"
+                href="imagens/banner-camisa.jpg"
+                target="_blank"
+                rel="noopener noreferrer">
+
+                <img
+                    src="imagens/banner-camisa.jpg"
+                    alt="Camisa oficial do Palmeiras autografada, que será sorteada nesta ação">
+
+            </a>
+
+            <a
+                class="banner banner-clicavel"
+                href="https://www.instagram.com/ceap.pedreira/"
+                target="_blank"
+                rel="noopener noreferrer">
+
+                <img
+                    src="imagens/banner-instagram.jpg"
+                    alt="Publicação da campanha no Instagram do CEAP Pedreira">
+
+            </a>
+
+        </aside>
+
+    </main>
+
+
+
+    <!-- ============================== -->
+    <!-- BARRA INFERIOR -->
+    <!-- ============================== -->
+
+    <div
+        id="barraConfirmacao"
+        class="barra-confirmacao">
+
+
+        <div class="barra-inner">
+
+
+            <!-- NÚMEROS -->
+
+            <div class="barra-numeros">
+
+                <small>
+                    Números selecionados:
+                </small>
+
+
+                <div
+                    id="numerosSelecionados"
+                    class="numeros-selecionados">
+                </div>
+
+            </div>
+
+
+
+            <!-- QUANTIDADE -->
+
+            <div class="barra-info">
+
+                <span
+                    id="quantidadeSelecionada">
+
+                    0 números
+
+                </span>
+
+
+                <strong
+                    id="valorTotal">
+
+                    R$ 0,00
+
+                </strong>
+
+            </div>
+
+
+
+            <!-- CONFIRMAR -->
+
+            <button
+                id="confirmar"
+                class="botao-confirmar">
+
+                Confirmar
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- ============================== -->
+    <!-- CAIXA DE CONFIRMAÇÃO -->
+    <!-- ============================== -->
+
+    <div
+        id="confirmacao"
+        class="modal-overlay"
+        style="display: none;">
+
+
+        <div class="modal">
+
+
+            <h2>
+                Confira seus números
+            </h2>
+
+
+            <div
+                id="listaConfirmacao"
+                class="lista-confirmacao">
+            </div>
+
+
+            <div class="modal-total">
+
+                <span
+                    id="quantidadeConfirmacao">
+
+                    0 números
+
+                </span>
+
+
+                <strong
+                    id="totalConfirmacao">
+
+                    R$ 0,00
+
+                </strong>
+
+            </div>
+
+
+            <!-- SUGESTÃO -->
+
+            <div class="sugestao">
+
+                <strong>
+                    Sugestão
+                </strong>
+
+                <p>
+                    Adicione mais números para
+                    melhorar suas chances de conseguir!
+                </p>
+
+            </div>
+
+
+            <!-- BOTÕES -->
+
+            <div class="modal-botoes">
+
+                <button
+                    id="continuarSelecionando"
+                    class="botao-voltar">
+
+                    Trocar números
+
+                </button>
+
+
+                <button
+                    id="continuarPagamento"
+                    class="botao-continuar">
+
+                    Continuar a compra
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- ============================== -->
+    <!-- CAIXA DA HISTÓRIA -->
+    <!-- ============================== -->
+
+    <div
+        id="modalHistoria"
+        class="modal-overlay"
+        style="display: none;">
+
+        <div class="modal modal-historia">
+
+            <button
+                id="fecharHistoria"
+                class="botao-fechar-modal"
+                type="button"
+                aria-label="Fechar">
+
+                ✕
+
+            </button>
+
+            <div class="historia-conteudo">
+
+                <div class="historia-fotos">
+
+                    <img
+                        src="imagens/historia-1.jpg"
+                        class="foto-rosto-topo"
+                        alt="Professor Marcelo Nunes atendendo uma vítima durante um treinamento de primeiros socorros">
+
+                    <img
+                        src="imagens/historia-2.jpg"
+                        alt="Professor Marcelo Nunes cruzando a linha de chegada de uma prova de ciclismo em São Paulo, durante a recuperação">
+
+                    <img
+                        src="imagens/banner-camisa.jpg"
+                        alt="Professor Marcelo Nunes segurando a camisa oficial do Palmeiras autografada, que será sorteada nesta ação">
+
+                </div>
+
+                <div class="historia-texto">
+
+                    <p>
+                        Olá, aqui é o Professor Marcelo Nunes. Em junho de
+                        2025 sofri um acidente saindo do trabalho, fraturei
+                        a tíbia. Fui pra cirurgia e vinha seguindo a
+                        recuperação com fisioterapia e exercícios. Até
+                        voltei a pedalar e consegui concluir a corrida 9
+                        de julho. Uma conquista durante a recuperação.
+                    </p>
+
+                    <p>
+                        Há uns dias fiz um RX e, resumindo, vou pra uma
+                        nova cirurgia — mais tempo afastado e mais
+                        despesas.
+                    </p>
+
+                    <p>
+                        Apesar de tudo isso, fui abençoado por Deus com
+                        essa linda camisa original autografada, que será
+                        sorteada nesta ação.
+                    </p>
+
+                    <p>
+                        Muito obrigado por participar. Forte abraço.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ============================== -->
+    <!-- CAIXA DE LOGIN DO ADMINISTRADOR -->
+    <!-- ============================== -->
+
+    <div
+        id="modalLoginAdmin"
+        class="modal-overlay"
+        style="display: none;">
+
+        <div class="modal modal-login">
+
+            <button
+                id="fecharLoginAdmin"
+                class="botao-fechar-modal"
+                type="button"
+                aria-label="Fechar">
+
+                ✕
+
+            </button>
+
+            <h2>
+                Área do administrador
+            </h2>
+
+            <form id="formularioLoginAdmin">
+
+                <div class="campo-login">
+
+                    <label for="usuarioAdmin">
+                        Usuário
+                    </label>
+
+                    <input
+                        id="usuarioAdmin"
+                        type="text"
+                        autocomplete="username"
+                        required>
+
+                </div>
+
+                <div class="campo-login">
+
+                    <label for="senhaAdmin">
+                        Senha
+                    </label>
+
+                    <input
+                        id="senhaAdmin"
+                        type="password"
+                        autocomplete="current-password"
+                        required>
+
+                </div>
+
+                <p
+                    id="erroLoginAdmin"
+                    class="erro-login"
+                    style="display: none;">
+                </p>
+
+                <button
+                    id="botaoEntrarAdmin"
+                    class="botao-continuar"
+                    type="submit">
+
+                    Entrar
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
