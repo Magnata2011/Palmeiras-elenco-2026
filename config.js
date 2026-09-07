@@ -101,7 +101,7 @@ const RIFA_CONFIG = {
     // CÓDIGO PIX "COPIA E COLA"
     // -----------------------------------------------------------
 
-    PIX_COPIA_COLA: "COLOQUE-SEU-CODIGO-PIX-AQUI"
+    PIX_COPIA_COLA: "00020126450014br.gov.bcb.pix0123nunesmarrey@hotmail.com5204000053039865802BR5915MARCELO NUNESGP6009Sao Paulo610901227-20062220518daqr42027295449593630422E0"
 
 };
 
