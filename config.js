@@ -41,7 +41,7 @@ const RIFA_CONFIG = {
     // QUANTIDADE TOTAL DE NÚMEROS DA RIFA
     // -----------------------------------------------------------
 
-    TOTAL_NUMEROS: 500,
+    TOTAL_NUMEROS: 1000,
 
 
     // -----------------------------------------------------------
