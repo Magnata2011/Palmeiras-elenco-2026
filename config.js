@@ -75,7 +75,7 @@ const RIFA_CONFIG = {
     // copie o link do formulário.
 
     GOOGLE_FORM_URL:
-        "https://forms.google.com/COLOQUE-O-LINK-DO-SEU-FORMULARIO-AQUI",
+        "https://forms.gle/dtfTPpmaCBLhngHw8",
 
 
     // -----------------------------------------------------------
