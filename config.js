@@ -59,7 +59,7 @@ const RIFA_CONFIG = {
     // WHATSAPP: código do país + DDD + número, sem espaços,
     // parênteses ou traços. Ex: 55 11 99999-9999 -> "5511999999999"
 
-    WHATSAPP: "5511999999999",
+    WHATSAPP: "5511976656188",
 
     EMAIL: "seuemail@gmail.com",
 
