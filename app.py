@@ -896,7 +896,7 @@ def reservar():
         # ----------------------------------------------------
 
         expira_em = criado_em + timedelta(
-            minutes=5
+            minutes=10
         )
 
 
