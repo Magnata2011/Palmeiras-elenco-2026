@@ -53,34 +53,6 @@ body {
 }
 
 
-.link-historia {
-    display: inline-block;
-
-    margin-top: 14px;
-
-    color: black;
-
-    text-decoration: none;
-
-    font-weight: bold;
-
-    border: 2px solid #004e2b;
-
-    padding: 9px 16px;
-
-    border-radius: 7px;
-
-    transition: 0.2s;
-}
-
-
-.link-historia:hover {
-    background: white;
-
-    color: #004e2b;
-}
-
-
 .botao-admin-topo {
     position: absolute;
 
@@ -236,8 +208,10 @@ body {
     display: grid;
 
     grid-template-columns:
-        minmax(0, 1fr)
-        280px;
+        minmax(280px, 420px)
+        minmax(320px, 620px);
+
+    justify-content: center;
 
     gap: 25px;
 
@@ -283,7 +257,7 @@ body {
     display: grid;
 
     grid-template-columns:
-        repeat(auto-fill, minmax(100px, 1fr));
+        repeat(5, 1fr);
 
     gap: 2px;
 
@@ -420,11 +394,6 @@ body {
     max-height: 320px;
 
     object-fit: cover;
-}
-
-
-.banner img.foto-rosto-topo {
-    object-position: center 12%;
 }
 
 
@@ -687,46 +656,38 @@ body {
 
 
 /* =====================================
-   MODAL DA HISTÓRIA
+   HISTÓRIA (caixa verde na página)
    ===================================== */
 
-.modal-historia {
-    position: relative;
-
-    padding: 0;
-
+.area-historia {
     background: #006437;
 
-    overflow: hidden;
-
-    width: min(640px, 100%);
-}
-
-
-.modal-historia .botao-fechar-modal {
-    background: rgba(255, 255, 255, 0.15);
-
     color: white;
+
+    border-radius: 14px;
+
+    padding: 18px 20px;
+
+    box-shadow:
+        0 3px 12px rgba(0, 0, 0, 0.15);
 }
 
 
-.modal-historia .botao-fechar-modal:hover {
-    background: rgba(255, 255, 255, 0.3);
+.area-historia h2 {
+    font-size: 18px;
+
+    margin-bottom: 12px;
 }
 
 
-.historia-conteudo {
-    display: flex;
+.historia-conteudo-pagina {
+    display: grid;
 
-    flex-direction: column;
+    grid-template-columns: 120px 1fr 150px;
 
-    gap: 20px;
+    gap: 14px;
 
-    padding: 25px 28px;
-
-    max-height: 85vh;
-
-    overflow-y: auto;
+    align-items: start;
 }
 
 
@@ -740,34 +701,27 @@ body {
 
     width: 100%;
 
-    height: 340px;
+    height: auto;
 
-    object-fit: cover;
-
-    object-position: center;
-
-    border-radius: 12px;
+    border-radius: 10px;
 
     border: 2px solid rgba(255, 255, 255, 0.35);
-}
-
-
-.historia-fotos img.foto-rosto-topo {
-    object-position: top;
 }
 
 
 .historia-texto {
     color: white;
 
-    font-size: 15px;
+    font-size: 12.5px;
 
-    line-height: 1.65;
+    line-height: 1.5;
+
+    text-align: justify;
 }
 
 
 .historia-texto p {
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 
@@ -780,13 +734,15 @@ body {
 
 @media (max-width: 640px) {
 
-    .historia-conteudo {
-        padding: 45px 18px 22px;
+    .historia-conteudo-pagina {
+        grid-template-columns: 1fr;
     }
 
 
     .historia-fotos img {
-        height: 220px;
+        max-width: 220px;
+
+        margin: 0 auto;
     }
 
 }
@@ -1025,11 +981,20 @@ body {
 
         flex-direction: row;
 
+        flex-wrap: wrap;
+
         gap: 12px;
     }
 
 
+    .area-historia {
+        flex-basis: 100%;
+    }
+
+
     .banner {
+        flex: 1 1 200px;
+
         min-height: 130px;
     }
 

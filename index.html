@@ -35,16 +35,6 @@
 
 
         <button
-            id="botaoHistoria"
-            class="link-historia"
-            type="button">
-
-            Conheça a história
-
-        </button>
-
-
-        <button
             id="botaoAdmin"
             class="botao-admin-topo"
             type="button">
@@ -111,8 +101,10 @@
                 class="instrucao">
 
                 Cada número custa R$ 20,00.
+                
 
             </p>
+            <p>Escolha entre 001 e 999 entre os números disponíveis</p>
 
 
             <!-- O JAVASCRIPT COLOCA OS 1000 BOTÕES AQUI -->
@@ -132,18 +124,80 @@
 
         <aside class="banner-area">
 
-            <a
-                class="banner banner-clicavel"
-                href="imagens/historia-1.jpg"
-                target="_blank"
-                rel="noopener noreferrer">
+            <!-- HISTÓRIA -->
 
-                <img
-                    src="imagens/historia-1.jpg"
-                    class="foto-rosto-topo"
-                    alt="Professor Marcelo Nunes, que receberá o valor arrecadado com a rifa da camisa autografada do Palmeiras">
+            <section class="area-historia">
 
-            </a>
+                <h2>
+                    Conheça a história
+                </h2>
+
+                <div class="historia-conteudo-pagina">
+
+                    <div class="historia-fotos">
+
+                        <img
+                            src="imagens/historia-1.jpg"
+                            class="foto-rosto-topo"
+                            alt="Professor Marcelo Nunes atendendo uma vítima durante um treinamento de primeiros socorros">
+
+                    </div>
+
+                    <div class="historia-texto">
+
+                        <p>
+                            Olá, aqui é o Professor Marcelo Nunes. Em
+                            junho de 2025 sofri um acidente saindo do
+                            trabalho, fraturei a tíbia. Fui pra
+                            cirurgia e vinha seguindo a recuperação
+                            com fisioterapia e exercícios. Até voltei
+                            a pedalar e consegui concluir a corrida 9
+                            de julho. Uma conquista durante a
+                            recuperação.
+                        </p>
+
+                        <p>
+                            Há uns dias fiz um RX e, resumindo, vou
+                            pra uma nova cirurgia — mais tempo
+                            afastado e mais despesas.
+                        </p>
+
+                        <p>
+                            Apesar de tudo isso, fui abençoado por
+                            Deus com essa linda camisa original
+                            autografada, que será sorteada nesta
+                            ação.
+                        </p>
+
+                        <p>
+                            Muito obrigado por participar. Forte
+                            abraço.
+                        </p>
+
+                    </div>
+
+                    <div class="historia-fotos">
+
+                        <a
+                            href="imagens/banner-camisa.jpg"
+                            target="_blank"
+                            rel="noopener noreferrer">
+
+                            <img
+                                src="imagens/banner-camisa.jpg"
+                                alt="Camisa oficial do Palmeiras autografada, que será sorteada nesta ação">
+
+                        </a>
+                        <p>Previsão do sorteio:</p>
+                        <p>31/Out/2026</p>
+                        <p>Pela Loteria Federal</p>
+
+                    </div>
+
+                </div>
+
+            </section>
+
 
             <a
                 class="banner banner-clicavel"
@@ -319,73 +373,6 @@
 
     </div>
 
-
-
-    <!-- ============================== -->
-    <!-- CAIXA DA HISTÓRIA -->
-    <!-- ============================== -->
-
-    <div
-        id="modalHistoria"
-        class="modal-overlay"
-        style="display: none;">
-
-        <div class="modal modal-historia">
-
-            <button
-                id="fecharHistoria"
-                class="botao-fechar-modal"
-                type="button"
-                aria-label="Fechar">
-
-                ✕
-
-            </button>
-
-            <div class="historia-conteudo">
-
-                <div class="historia-fotos">
-
-                    <img
-                        src="imagens/banner-camisa.jpg"
-                        alt="Professor Marcelo Nunes segurando a camisa oficial do Palmeiras autografada, que será sorteada nesta ação">
-
-                </div>
-
-                <div class="historia-texto">
-
-                    <p>
-                        Olá, aqui é o Professor Marcelo Nunes. Em junho de
-                        2025 sofri um acidente saindo do trabalho, fraturei
-                        a tíbia. Fui pra cirurgia e vinha seguindo a
-                        recuperação com fisioterapia e exercícios. Até
-                        voltei a pedalar e consegui concluir a corrida 9
-                        de julho. Uma conquista durante a recuperação.
-                    </p>
-
-                    <p>
-                        Há uns dias fiz um RX e, resumindo, vou pra uma
-                        nova cirurgia — mais tempo afastado e mais
-                        despesas.
-                    </p>
-
-                    <p>
-                        Apesar de tudo isso, fui abençoado por Deus com
-                        essa linda camisa original autografada, que será
-                        sorteada nesta ação.
-                    </p>
-
-                    <p>
-                        Muito obrigado por participar. Forte abraço.
-                    </p>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
 
 
     <!-- ============================== -->

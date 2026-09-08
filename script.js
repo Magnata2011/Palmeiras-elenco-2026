@@ -43,44 +43,6 @@ const descartarCompraAndamento = document.getElementById("descartarCompraAndamen
 
 
 // =====================================
-// MODAL DA HISTÓRIA
-// =====================================
-
-const botaoHistoria = document.getElementById("botaoHistoria");
-const modalHistoria = document.getElementById("modalHistoria");
-const fecharHistoria = document.getElementById("fecharHistoria");
-
-if (botaoHistoria) {
-
-    botaoHistoria.addEventListener("click", () => {
-        modalHistoria.style.display = "flex";
-    });
-
-}
-
-if (fecharHistoria) {
-
-    fecharHistoria.addEventListener("click", () => {
-        modalHistoria.style.display = "none";
-    });
-
-}
-
-if (modalHistoria) {
-
-    modalHistoria.addEventListener("click", evento => {
-
-        // Fecha ao clicar fora da caixa (no fundo escuro)
-        if (evento.target === modalHistoria) {
-            modalHistoria.style.display = "none";
-        }
-
-    });
-
-}
-
-
-// =====================================
 // LOGIN DO ADMINISTRADOR
 // =====================================
 
