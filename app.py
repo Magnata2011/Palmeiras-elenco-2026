@@ -13,6 +13,87 @@ from datetime import datetime, timedelta
 
 
 # ============================================================
+# BANCO DE DADOS: SQLITE (local) OU POSTGRESQL (produção)
+# ============================================================
+# No seu computador, sem configurar nada, o site continua usando
+# SQLite (um arquivo, "rifa.db") — simples pra testar.
+#
+# Em produção, o Render (e a maioria dos serviços de hospedagem)
+# apaga os arquivos locais toda vez que o servidor reinicia, dorme
+# ou recebe um novo deploy — incluindo o rifa.db. Isso faz números
+# vendidos "voltarem a ficar disponíveis" sozinhos depois de um
+# tempo sem acessos.
+#
+# Por isso, quando existir a variável de ambiente DATABASE_URL
+# (o Render Postgres já fornece isso), o site troca automaticamente
+# para PostgreSQL — que é um banco separado, e não é apagado nesses
+# casos. Veja o README para o passo a passo de criar esse banco.
+# ============================================================
+
+MODO_POSTGRES = bool(os.environ.get("DATABASE_URL"))
+
+if MODO_POSTGRES:
+
+    import psycopg2
+    import psycopg2.extras
+
+
+class CursorCompativel:
+    """
+    Envolve o cursor do PostgreSQL para que o resto do código — que
+    foi escrito pensando no SQLite — continue funcionando sem
+    precisar reescrever cada consulta. Faz duas traduções:
+
+    1. Os "?" usados como marcador de valor no SQLite viram "%s",
+       que é o que o PostgreSQL espera.
+
+    2. "cursor.execute(...).fetchone()" (encadeado, como o SQLite
+       permite) volta a funcionar — o psycopg2 sozinho não permite
+       encadear porque seu ".execute()" não devolve o cursor.
+    """
+
+    def __init__(self, cursor_real):
+        self._cursor = cursor_real
+
+    def execute(self, sql, parametros=()):
+
+        sql_convertido = sql.replace("?", "%s")
+
+        self._cursor.execute(sql_convertido, parametros)
+
+        return self
+
+    def fetchone(self):
+        return self._cursor.fetchone()
+
+    def fetchall(self):
+        return self._cursor.fetchall()
+
+    def __getattr__(self, nome):
+        return getattr(self._cursor, nome)
+
+
+class ConexaoCompativel:
+    """
+    Só existe para o .cursor() devolver o CursorCompativel acima, e
+    para reproduzir o atalho "conexao.execute(...)" que o SQLite
+    permite (cria um cursor sozinho) mas o psycopg2 não tem.
+    """
+
+    def __init__(self, conexao_real):
+        self._conexao = conexao_real
+
+    def cursor(self):
+        return CursorCompativel(self._conexao.cursor())
+
+    def execute(self, sql, parametros=()):
+        return self.cursor().execute(sql, parametros)
+
+    def __getattr__(self, nome):
+        return getattr(self._conexao, nome)
+
+
+# ============================================================
 # CONFIGURAÇÃO
 # ============================================================
 
@@ -235,6 +316,16 @@ def exigir_login_admin(funcao):
 
 def conectar():
 
+    if MODO_POSTGRES:
+
+        conexao_real = psycopg2.connect(
+            os.environ["DATABASE_URL"],
+            cursor_factory=psycopg2.extras.RealDictCursor
+        )
+
+        return ConexaoCompativel(conexao_real)
+
+
     conexao = sqlite3.connect(
         DATABASE,
         timeout=30
@@ -347,10 +438,16 @@ def criar_banco():
     # TABELA DAS COMPRAS
     # --------------------------------------------------------
 
-    cursor.execute("""
+    id_auto_incremento = (
+        "id SERIAL PRIMARY KEY"
+        if MODO_POSTGRES else
+        "id INTEGER PRIMARY KEY AUTOINCREMENT"
+    )
+
+    cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS compras (
 
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            {id_auto_incremento},
 
             token TEXT NOT NULL UNIQUE,
 
@@ -376,10 +473,29 @@ def criar_banco():
     # --------------------------------------------------------
     # CRIAR OS 1000 NÚMEROS
     # --------------------------------------------------------
+    # "INSERT OR IGNORE" é exclusivo do SQLite — no PostgreSQL o
+    # equivalente é "ON CONFLICT ... DO NOTHING".
+    # --------------------------------------------------------
 
-    for numero in range(1, TOTAL_NUMEROS + 1):
+    if MODO_POSTGRES:
 
-        cursor.execute("""
+        sql_inserir_numero = """
+            INSERT INTO numeros
+            (
+                numero,
+                status
+            )
+            VALUES
+            (
+                ?,
+                'disponivel'
+            )
+            ON CONFLICT (numero) DO NOTHING
+        """
+
+    else:
+
+        sql_inserir_numero = """
             INSERT OR IGNORE INTO numeros
             (
                 numero,
@@ -390,7 +506,14 @@ def criar_banco():
                 ?,
                 'disponivel'
             )
-        """, (numero,))
+        """
+
+    for numero in range(1, TOTAL_NUMEROS + 1):
+
+        cursor.execute(
+            sql_inserir_numero,
+            (numero,)
+        )
 
 
     conexao.commit()
@@ -780,8 +903,12 @@ def reservar():
         # ----------------------------------------------------
         # CRIAR COMPRA
         # ----------------------------------------------------
+        # O "RETURNING id" só é necessário (e só funciona) no
+        # PostgreSQL — o SQLite devolve o id inserido por
+        # "cursor.lastrowid" em vez disso.
+        # ----------------------------------------------------
 
-        cursor.execute("""
+        sql_criar_compra = """
             INSERT INTO compras
             (
                 token,
@@ -799,7 +926,12 @@ def reservar():
                 ?,
                 ?
             )
-        """, (
+        """
+
+        if MODO_POSTGRES:
+            sql_criar_compra += " RETURNING id"
+
+        cursor.execute(sql_criar_compra, (
             token,
             json.dumps(numeros),
             criado_em.strftime(
@@ -811,7 +943,10 @@ def reservar():
         ))
 
 
-        compra_id = cursor.lastrowid
+        if MODO_POSTGRES:
+            compra_id = cursor.fetchone()["id"]
+        else:
+            compra_id = cursor.lastrowid
 
 
         # ----------------------------------------------------
