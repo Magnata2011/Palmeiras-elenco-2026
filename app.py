@@ -58,6 +58,132 @@ else:
 DATABASE = "rifa.db"
 
 
+# ============================================================
+# BANCO DE DADOS: SQLite (local/teste) ou PostgreSQL (produção)
+# ============================================================
+# Se a variável de ambiente DATABASE_URL existir (o Render cria uma
+# automaticamente quando você conecta um banco Postgres ao serviço),
+# o sistema passa a usar PostgreSQL — que não é apagado quando o
+# serviço reinicia ou "dorme" por inatividade, ao contrário do
+# arquivo SQLite local.
+#
+# Sem essa variável (rodando no seu computador, por exemplo), o
+# sistema continua usando o arquivo rifa.db normalmente, sem precisar
+# instalar nem configurar nada.
+#
+# Para não precisar reescrever cada consulta SQL do sistema (que usa
+# "?" no lugar dos valores, do jeito que o SQLite espera), as classes
+# abaixo traduzem automaticamente para o formato que o PostgreSQL
+# entende ("%s") nos bastidores.
+# ------------------------------------------------------------------
+
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+
+USANDO_POSTGRES = bool(DATABASE_URL)
+
+if USANDO_POSTGRES:
+
+    import psycopg2
+    import psycopg2.extras
+
+    # Algumas plataformas (Heroku, e versões antigas de outras)
+    # entregam a URL começando com "postgres://", que versões mais
+    # novas do psycopg2 já aceitam, mas deixamos essa troca aqui por
+    # segurança, já que não custa nada.
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = "postgresql://" + DATABASE_URL[len("postgres://"):]
+
+
+class _CursorCompat:
+    """
+    Envolve o cursor de verdade (sqlite3 ou psycopg2) e resolve as
+    diferenças entre os dois bancos:
+
+    - Traduz "?" (placeholder do SQLite) para "%s" (placeholder do
+      PostgreSQL) automaticamente.
+    - .execute() devolve o próprio objeto (como o sqlite3 já fazia),
+      pra continuar funcionando o padrão usado em várias partes do
+      código: cursor.execute("...").fetchone()
+    - .lastrowid funciona nos dois bancos. No PostgreSQL, isso exige
+      que a consulta INSERT tenha "RETURNING id" — quem chama precisa
+      incluir isso na consulta quando for usar .lastrowid (só existe
+      um lugar no sistema que faz isso).
+    """
+
+    def __init__(self, cursor_real):
+        self._cursor = cursor_real
+        self._lastrowid = None
+
+    def execute(self, sql, parametros=()):
+
+        sql_final = sql
+
+        if USANDO_POSTGRES:
+            sql_final = sql_final.replace("?", "%s")
+
+        self._cursor.execute(sql_final, parametros)
+
+        if USANDO_POSTGRES and "RETURNING id" in sql_final.upper().replace("\n", " "):
+
+            try:
+                linha = self._cursor.fetchone()
+                self._lastrowid = linha["id"] if linha else None
+            except Exception:
+                self._lastrowid = None
+
+        return self
+
+    def fetchone(self):
+        return self._cursor.fetchone()
+
+    def fetchall(self):
+        return self._cursor.fetchall()
+
+    @property
+    def lastrowid(self):
+        if USANDO_POSTGRES:
+            return self._lastrowid
+        return self._cursor.lastrowid
+
+    @property
+    def rowcount(self):
+        return self._cursor.rowcount
+
+
+class _ConexaoCompat:
+    """
+    Envolve a conexão de verdade e adiciona o atalho .execute(...)
+    que o sqlite3.Connection já tem nativamente (usado em algumas
+    partes do código para não precisar criar um cursor manualmente),
+    mas que o psycopg2 não tem.
+    """
+
+    def __init__(self, conexao_real):
+        self._conexao = conexao_real
+
+    def cursor(self):
+        if USANDO_POSTGRES:
+            cursor_real = self._conexao.cursor(
+                cursor_factory=psycopg2.extras.RealDictCursor
+            )
+        else:
+            cursor_real = self._conexao.cursor()
+
+        return _CursorCompat(cursor_real)
+
+    def execute(self, sql, parametros=()):
+        return self.cursor().execute(sql, parametros)
+
+    def commit(self):
+        return self._conexao.commit()
+
+    def rollback(self):
+        return self._conexao.rollback()
+
+    def close(self):
+        return self._conexao.close()
+
+
 # Tempo máximo para o admin confirmar depois que a pessoa marca
 # "já paguei" (ela é redirecionada pro formulário do Google nesse
 # meio tempo)
@@ -254,14 +380,20 @@ def exigir_login_admin(funcao):
 
 def conectar():
 
-    conexao = sqlite3.connect(
+    if USANDO_POSTGRES:
+
+        conexao_real = psycopg2.connect(DATABASE_URL)
+
+        return _ConexaoCompat(conexao_real)
+
+    conexao_real = sqlite3.connect(
         DATABASE,
         timeout=30
     )
 
-    conexao.row_factory = sqlite3.Row
+    conexao_real.row_factory = sqlite3.Row
 
-    return conexao
+    return _ConexaoCompat(conexao_real)
 
 
 # ============================================================
@@ -366,30 +498,59 @@ def criar_banco():
     # TABELA DAS COMPRAS
     # --------------------------------------------------------
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS compras (
+    if USANDO_POSTGRES:
 
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS compras (
 
-            token TEXT NOT NULL UNIQUE,
+                id SERIAL PRIMARY KEY,
 
-            numeros TEXT NOT NULL,
+                token TEXT NOT NULL UNIQUE,
 
-            status TEXT NOT NULL
-                DEFAULT 'pendente_pagamento',
+                numeros TEXT NOT NULL,
 
-            criado_em TEXT NOT NULL,
+                status TEXT NOT NULL
+                    DEFAULT 'pendente_pagamento',
 
-            comprovante TEXT,
+                criado_em TEXT NOT NULL,
 
-            comprovante_enviado_em TEXT,
+                comprovante TEXT,
 
-            expira_em TEXT,
+                comprovante_enviado_em TEXT,
 
-            confirmado_em TEXT
+                expira_em TEXT,
 
-        )
-    """)
+                confirmado_em TEXT
+
+            )
+        """)
+
+    else:
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS compras (
+
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+                token TEXT NOT NULL UNIQUE,
+
+                numeros TEXT NOT NULL,
+
+                status TEXT NOT NULL
+                    DEFAULT 'pendente_pagamento',
+
+                criado_em TEXT NOT NULL,
+
+                comprovante TEXT,
+
+                comprovante_enviado_em TEXT,
+
+                expira_em TEXT,
+
+                confirmado_em TEXT
+
+            )
+        """)
 
 
     # --------------------------------------------------------
@@ -398,18 +559,36 @@ def criar_banco():
 
     for numero in range(1, TOTAL_NUMEROS + 1):
 
-        cursor.execute("""
-            INSERT OR IGNORE INTO numeros
-            (
-                numero,
-                status
-            )
-            VALUES
-            (
-                ?,
-                'disponivel'
-            )
-        """, (numero,))
+        if USANDO_POSTGRES:
+
+            cursor.execute("""
+                INSERT INTO numeros
+                (
+                    numero,
+                    status
+                )
+                VALUES
+                (
+                    ?,
+                    'disponivel'
+                )
+                ON CONFLICT (numero) DO NOTHING
+            """, (numero,))
+
+        else:
+
+            cursor.execute("""
+                INSERT OR IGNORE INTO numeros
+                (
+                    numero,
+                    status
+                )
+                VALUES
+                (
+                    ?,
+                    'disponivel'
+                )
+            """, (numero,))
 
 
     conexao.commit()
@@ -818,7 +997,7 @@ def reservar():
                 ?,
                 ?
             )
-        """, (
+        """ + (" RETURNING id" if USANDO_POSTGRES else ""), (
             token,
             json.dumps(numeros),
             criado_em.strftime(

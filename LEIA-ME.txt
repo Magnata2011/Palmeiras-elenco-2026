@@ -182,15 +182,55 @@ O QUE FOI CORRIGIDO/ALTERADO:
    (foto em cima, texto embaixo) — mesma lógica de layout que já
    tínhamos ajustado para a foto vertical.
 
+13) POSTGRESQL — implementado de verdade agora
+   O app.py agora detecta a variável DATABASE_URL automaticamente:
+   - Se ela existir (caso do Render, com o banco que você já criou),
+     usa PostgreSQL — que não é apagado quando o serviço reinicia ou
+     dorme.
+   - Se não existir (rodando no seu computador), continua usando o
+     rifa.db (SQLite) normalmente, sem precisar instalar nada.
+
+   O que mudei tecnicamente (caso queira revisar):
+   - Criei duas classes de compatibilidade (_ConexaoCompat e
+     _CursorCompat) que traduzem "?" para "%s" automaticamente, e
+     resolvem as pequenas diferenças entre os dois bancos (ex:
+     .lastrowid, o atalho conexao.execute(), AUTOINCREMENT vs
+     SERIAL, INSERT OR IGNORE vs ON CONFLICT DO NOTHING). Isso evitou
+     ter que reescrever as dezenas de consultas SQL espalhadas pelo
+     sistema.
+   - Adicionei psycopg2-binary no requirements.txt.
+
+   IMPORTANTE — o que eu consegui e não consegui testar:
+   Este ambiente aqui não tem acesso à internet, então não consegui
+   instalar o psycopg2 nem testar contra um PostgreSQL de verdade.
+   O que eu testei de verdade, rodando o app.py aqui:
+   - O caminho SQLite completo (reservar número, confirmar
+     pagamento, login admin, listar compras) continua funcionando
+     100% depois da mudança — sem regressão.
+   - Simulei um "reinício" (rodando a criação do banco de novo em
+     cima dos dados existentes) e confirmei que nada se perde nem
+     duplica.
+   - Revisei manualmente cada consulta SQL do sistema procurando por
+     armadilhas conhecidas do psycopg2 (parâmetros nomeados, sinal
+     de % dentro de LIKE, etc.) — não encontrei nenhuma.
+   O caminho PostgreSQL em si (a parte que só roda com DATABASE_URL
+   definida) eu não tive como executar de verdade. Deploie e teste;
+   se dar algum erro, me manda o log do Render que eu corrijo.
+
+   Como testar se resolveu o problema original: depois do deploy,
+   reserve um número de teste, force um redeploy manual (ou espere
+   uns 20 min sem acessar o site pra ele "dormir" e acordar de
+   novo), e confira se o número continua marcado. Se sim, resolvido.
+
+14) SENHA DO BANCO EXPOSTA — recomendo trocar
+   A DATABASE_URL que você me mandou (com a senha do Postgres em
+   texto puro) ficou registrada nesta conversa. Recomendo gerar uma
+   nova senha para esse banco no Render (ou recriar o usuário do
+   banco) só por precaução, já que a credencial antiga não deve mais
+   ser considerada secreta.
+
 NÃO MUDEI o estilo/visual de mais nada além do que está listado
 acima — só o necessário pra corrigir os bugs e atender os pedidos.
-
-SOBRE O BANCO DE DADOS NO RENDER (PostgreSQL):
-Isso ainda está pendente — vimos que o Render apaga o SQLite
-(rifa.db) toda vez que o serviço reinicia ou "dorme" por
-inatividade no plano grátis, e que já existe uma variável
-DATABASE_URL configurada aí. Ainda não adaptei o app.py pra usar
-esse banco de verdade — é a próxima parte a terminar.
 
 DEPOIS DE SUBIR PRO GITHUB:
 - Suba estes arquivos, faça o deploy do backend no Render de novo
