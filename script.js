@@ -43,6 +43,60 @@ const descartarCompraAndamento = document.getElementById("descartarCompraAndamen
 
 
 // =====================================
+// FALE CONOSCO (WHATSAPP)
+// =====================================
+// Monta o link do WhatsApp e mostra o número já formatado,
+// puxando tudo de RIFA_CONFIG.WHATSAPP (config.js) — não precisa
+// editar o HTML se o número mudar no futuro.
+
+const linkWhatsappContato = document.getElementById("linkWhatsappContato");
+const linkQrWhatsappContato = document.getElementById("linkQrWhatsappContato");
+const qrWhatsappContato = document.getElementById("qrWhatsappContato");
+
+if (linkWhatsappContato && RIFA_CONFIG.WHATSAPP) {
+
+    const numeroBruto = RIFA_CONFIG.WHATSAPP;
+
+    // Espera o formato "55" (país) + "DD" (DDD) + número.
+    // Ex: "5511976656188" -> "(11) 97665-6188"
+    const ddd = numeroBruto.slice(2, 4);
+    const resto = numeroBruto.slice(4);
+
+    const numeroFormatado =
+        resto.length === 9
+            ? "(" + ddd + ") " + resto.slice(0, 5) + "-" + resto.slice(5)
+            : "(" + ddd + ") " + resto.slice(0, 4) + "-" + resto.slice(4);
+
+    linkWhatsappContato.textContent = "📱 " + numeroFormatado;
+
+    const mensagem = encodeURIComponent(
+        "Olá! Tenho uma dúvida sobre a rifa do Palmeiras."
+    );
+
+    const linkWhatsapp =
+        "https://wa.me/" + numeroBruto + "?text=" + mensagem;
+
+    linkWhatsappContato.href = linkWhatsapp;
+
+    // QR Code: mesmo link do WhatsApp, só que escaneável — útil
+    // pra quem está vendo o site pelo celular da rifa/impresso, ou
+    // prefere escanear a clicar.
+    if (qrWhatsappContato) {
+
+        qrWhatsappContato.src =
+            "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" +
+            encodeURIComponent(linkWhatsapp);
+
+    }
+
+    if (linkQrWhatsappContato) {
+        linkQrWhatsappContato.href = linkWhatsapp;
+    }
+
+}
+
+
+// =====================================
 // LOGIN DO ADMINISTRADOR
 // =====================================
 
