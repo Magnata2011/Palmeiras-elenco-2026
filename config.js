@@ -48,7 +48,7 @@ const RIFA_CONFIG = {
     // TEMPO PARA PAGAR (deve bater com HORAS/MINUTOS do app.py)
     // -----------------------------------------------------------
 
-    MINUTOS_PARA_PAGAR: 5,
+    MINUTOS_PARA_PAGAR: 1440,
 
     HORAS_PARA_ENVIAR_COMPROVANTE: 24,
 
