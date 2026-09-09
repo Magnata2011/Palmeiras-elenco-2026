@@ -224,6 +224,10 @@ body {
    ===================================== */
 
 .area-numeros {
+    grid-column: 1;
+
+    grid-row: 1;
+
     background: white;
 
     border-radius: 14px;
@@ -255,6 +259,8 @@ body {
 
 .area-contato {
     grid-column: 1;
+
+    grid-row: 2;
 
     background: white;
 
@@ -355,7 +361,7 @@ body {
 @media (max-width: 900px) {
 
     .area-contato {
-        grid-column: unset;
+        grid-row: auto;
     }
 
 }
@@ -465,6 +471,10 @@ body {
    ===================================== */
 
 .banner-area {
+    grid-column: 2;
+
+    grid-row: 1 / 3;
+
     position: sticky;
 
     top: 20px;
@@ -787,18 +797,18 @@ body {
 
 
 .area-historia h2 {
-    font-size: 18px;
+    font-size: 20px;
 
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
 
 
 .historia-conteudo-pagina {
     display: grid;
 
-    grid-template-columns: 120px 1fr 150px;
+    grid-template-columns: 150px 1fr 170px;
 
-    gap: 14px;
+    gap: 16px;
 
     align-items: start;
 }
@@ -825,16 +835,16 @@ body {
 .historia-texto {
     color: white;
 
-    font-size: 12.5px;
+    font-size: 14px;
 
-    line-height: 1.5;
+    line-height: 1.6;
 
     text-align: justify;
 }
 
 
 .historia-texto p {
-    margin-bottom: 10px;
+    margin-bottom: 12px;
 }
 
 
@@ -1086,6 +1096,15 @@ body {
 
     .pagina-principal {
         grid-template-columns: 1fr;
+    }
+
+
+    .area-numeros,
+    .area-contato,
+    .banner-area {
+        grid-column: 1;
+
+        grid-row: auto;
     }
 
 
