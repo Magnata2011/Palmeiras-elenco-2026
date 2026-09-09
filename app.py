@@ -13,87 +13,6 @@ from datetime import datetime, timedelta
 
 
 # ============================================================
-# BANCO DE DADOS: SQLITE (local) OU POSTGRESQL (produção)
-# ============================================================
-# No seu computador, sem configurar nada, o site continua usando
-# SQLite (um arquivo, "rifa.db") — simples pra testar.
-#
-# Em produção, o Render (e a maioria dos serviços de hospedagem)
-# apaga os arquivos locais toda vez que o servidor reinicia, dorme
-# ou recebe um novo deploy — incluindo o rifa.db. Isso faz números
-# vendidos "voltarem a ficar disponíveis" sozinhos depois de um
-# tempo sem acessos.
-#
-# Por isso, quando existir a variável de ambiente DATABASE_URL
-# (o Render Postgres já fornece isso), o site troca automaticamente
-# para PostgreSQL — que é um banco separado, e não é apagado nesses
-# casos. Veja o README para o passo a passo de criar esse banco.
-# ============================================================
-
-MODO_POSTGRES = bool(os.environ.get("DATABASE_URL"))
-
-if MODO_POSTGRES:
-
-    import psycopg2
-    import psycopg2.extras
-
-
-class CursorCompativel:
-    """
-    Envolve o cursor do PostgreSQL para que o resto do código — que
-    foi escrito pensando no SQLite — continue funcionando sem
-    precisar reescrever cada consulta. Faz duas traduções:
-
-    1. Os "?" usados como marcador de valor no SQLite viram "%s",
-       que é o que o PostgreSQL espera.
-
-    2. "cursor.execute(...).fetchone()" (encadeado, como o SQLite
-       permite) volta a funcionar — o psycopg2 sozinho não permite
-       encadear porque seu ".execute()" não devolve o cursor.
-    """
-
-    def __init__(self, cursor_real):
-        self._cursor = cursor_real
-
-    def execute(self, sql, parametros=()):
-
-        sql_convertido = sql.replace("?", "%s")
-
-        self._cursor.execute(sql_convertido, parametros)
-
-        return self
-
-    def fetchone(self):
-        return self._cursor.fetchone()
-
-    def fetchall(self):
-        return self._cursor.fetchall()
-
-    def __getattr__(self, nome):
-        return getattr(self._cursor, nome)
-
-
-class ConexaoCompativel:
-    """
-    Só existe para o .cursor() devolver o CursorCompativel acima, e
-    para reproduzir o atalho "conexao.execute(...)" que o SQLite
-    permite (cria um cursor sozinho) mas o psycopg2 não tem.
-    """
-
-    def __init__(self, conexao_real):
-        self._conexao = conexao_real
-
-    def cursor(self):
-        return CursorCompativel(self._conexao.cursor())
-
-    def execute(self, sql, parametros=()):
-        return self.cursor().execute(sql, parametros)
-
-    def __getattr__(self, nome):
-        return getattr(self._conexao, nome)
-
-
-# ============================================================
 # CONFIGURAÇÃO
 # ============================================================
 
@@ -227,14 +146,28 @@ def enviar_email_notificacao(assunto, corpo):
 
 def _var_ambiente_limpa(nome, padrao):
     """
-    Lê uma variável de ambiente e remove espaços/quebras de linha
-    acidentais nas pontas (comuns ao colar no painel do Render,
-    e que antes faziam o login falhar mesmo com a senha "certa").
+    Lê uma variável de ambiente e limpa erros comuns de copiar/colar
+    no painel do Render:
+    - espaços ou quebras de linha nas pontas
+    - aspas coladas junto do valor sem querer (ex: colar "admin123"
+      com as aspas inclusas, virando literalmente o texto "admin123"
+      com aspas em vez de admin123)
+    - variável cadastrada só com espaço em branco, ou em branco
+      mesmo (nesse caso volta pro valor padrão, em vez de travar o
+      login com uma senha vazia)
     """
 
-    valor = os.environ.get(nome, padrao)
+    valor = os.environ.get(nome)
 
-    return valor.strip() if valor is not None else valor
+    if valor is None:
+        return padrao
+
+    valor = valor.strip()
+
+    if len(valor) >= 2 and valor[0] == valor[-1] and valor[0] in ("'", '"'):
+        valor = valor[1:-1].strip()
+
+    return valor if valor else padrao
 
 
 ADMIN_USUARIOS = {
@@ -244,6 +177,11 @@ ADMIN_USUARIOS = {
     _var_ambiente_limpa("ADMIN_USUARIO_2", "admin"):
         _var_ambiente_limpa("ADMIN_SENHA_2", "admin123"),
 }
+
+print(
+    "[admin] Usuários administradores carregados neste início: "
+    + repr(list(ADMIN_USUARIOS.keys()))
+)
 
 
 # Sessões ativas do admin: token -> {"usuario":..., "expira_em":...}
@@ -315,16 +253,6 @@ def exigir_login_admin(funcao):
 # ============================================================
 
 def conectar():
-
-    if MODO_POSTGRES:
-
-        conexao_real = psycopg2.connect(
-            os.environ["DATABASE_URL"],
-            cursor_factory=psycopg2.extras.RealDictCursor
-        )
-
-        return ConexaoCompativel(conexao_real)
-
 
     conexao = sqlite3.connect(
         DATABASE,
@@ -438,16 +366,10 @@ def criar_banco():
     # TABELA DAS COMPRAS
     # --------------------------------------------------------
 
-    id_auto_incremento = (
-        "id SERIAL PRIMARY KEY"
-        if MODO_POSTGRES else
-        "id INTEGER PRIMARY KEY AUTOINCREMENT"
-    )
-
-    cursor.execute(f"""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS compras (
 
-            {id_auto_incremento},
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
 
             token TEXT NOT NULL UNIQUE,
 
@@ -473,29 +395,10 @@ def criar_banco():
     # --------------------------------------------------------
     # CRIAR OS 1000 NÚMEROS
     # --------------------------------------------------------
-    # "INSERT OR IGNORE" é exclusivo do SQLite — no PostgreSQL o
-    # equivalente é "ON CONFLICT ... DO NOTHING".
-    # --------------------------------------------------------
 
-    if MODO_POSTGRES:
+    for numero in range(1, TOTAL_NUMEROS + 1):
 
-        sql_inserir_numero = """
-            INSERT INTO numeros
-            (
-                numero,
-                status
-            )
-            VALUES
-            (
-                ?,
-                'disponivel'
-            )
-            ON CONFLICT (numero) DO NOTHING
-        """
-
-    else:
-
-        sql_inserir_numero = """
+        cursor.execute("""
             INSERT OR IGNORE INTO numeros
             (
                 numero,
@@ -506,14 +409,7 @@ def criar_banco():
                 ?,
                 'disponivel'
             )
-        """
-
-    for numero in range(1, TOTAL_NUMEROS + 1):
-
-        cursor.execute(
-            sql_inserir_numero,
-            (numero,)
-        )
+        """, (numero,))
 
 
     conexao.commit()
@@ -892,23 +788,19 @@ def reservar():
         # ----------------------------------------------------
         # PRAZO INICIAL
         #
-        # 5 minutos para efetuar o pagamento.
+        # 24 horas para efetuar o pagamento.
         # ----------------------------------------------------
 
         expira_em = criado_em + timedelta(
-            minutes=10
+            hours=24
         )
 
 
         # ----------------------------------------------------
         # CRIAR COMPRA
         # ----------------------------------------------------
-        # O "RETURNING id" só é necessário (e só funciona) no
-        # PostgreSQL — o SQLite devolve o id inserido por
-        # "cursor.lastrowid" em vez disso.
-        # ----------------------------------------------------
 
-        sql_criar_compra = """
+        cursor.execute("""
             INSERT INTO compras
             (
                 token,
@@ -926,12 +818,7 @@ def reservar():
                 ?,
                 ?
             )
-        """
-
-        if MODO_POSTGRES:
-            sql_criar_compra += " RETURNING id"
-
-        cursor.execute(sql_criar_compra, (
+        """, (
             token,
             json.dumps(numeros),
             criado_em.strftime(
@@ -943,10 +830,7 @@ def reservar():
         ))
 
 
-        if MODO_POSTGRES:
-            compra_id = cursor.fetchone()["id"]
-        else:
-            compra_id = cursor.lastrowid
+        compra_id = cursor.lastrowid
 
 
         # ----------------------------------------------------
@@ -989,7 +873,7 @@ def reservar():
 
         enviar_email_notificacao(
             "🎟️ Nova reserva na rifa",
-            "Alguém acabou de reservar números e tem 5 minutos "
+            "Alguém acabou de reservar números e tem 24 horas "
             "para pagar.\n\n"
             f"Código da compra: {token}\n"
             f"Números: {numeros_texto}\n"
@@ -1565,10 +1449,22 @@ def login_admin():
         # Log de diagnóstico (aparece nos "Logs" do Render). Nunca
         # imprime a senha digitada nem a senha certa — só ajuda a
         # confirmar se o usuário digitado bate com algum dos
-        # cadastrados nas variáveis de ambiente.
+        # cadastrados, e se o problema é o usuário ou a senha.
+        if senha_correta is None:
+            motivo = "usuário não está na lista de cadastrados"
+        else:
+            motivo = (
+                "usuário OK, senha não bate (digitada tem "
+                + str(len(senha))
+                + " caractere(s), a cadastrada tem "
+                + str(len(senha_correta))
+                + ")"
+            )
+
         print(
             "[login admin] Tentativa falhou. Usuário recebido: "
             + repr(usuario)
+            + " | Motivo: " + motivo
             + " | Usuários cadastrados no momento: "
             + repr(list(ADMIN_USUARIOS.keys()))
         )

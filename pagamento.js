@@ -114,7 +114,7 @@ function converterData(texto) {
 // =====================================
 // Antes, quem usava o botão voltar do navegador (em vez do botão
 // da própria página) saía sem cancelar a reserva: os números
-// ficavam presos como "pendente" por até 5 minutos e a pessoa
+// ficavam presos como "pendente" por até 24 horas e a pessoa
 // via os próprios números travados no index, sem entender o motivo.
 //
 // Agora: criamos uma "trava" no histórico do navegador. Se a
@@ -278,7 +278,7 @@ async function carregarCompra() {
         }
 
         // Ainda pendente de pagamento: mantém a proteção de saída
-        // e liga o cronômetro de 5 minutos.
+        // e liga o cronômetro de 24 horas.
         iniciarTimer(compra.expira_em);
 
     } catch (erro) {
@@ -374,7 +374,7 @@ function iniciarTimer(dataExpiracao) {
 
         if (diferenca <= 0) {
 
-            timerElemento.textContent = "00:00";
+            timerElemento.textContent = "00:00:00";
             pararTimer();
             podeSairLivremente = true;
             bloquearPorExpiracao();
@@ -383,15 +383,17 @@ function iniciarTimer(dataExpiracao) {
         }
 
         const totalSegundos = Math.floor(diferenca / 1000);
-        const minutos = Math.floor(totalSegundos / 60);
+        const horas = Math.floor(totalSegundos / 3600);
+        const minutos = Math.floor((totalSegundos % 3600) / 60);
         const segundos = totalSegundos % 60;
 
         timerElemento.textContent =
+            String(horas).padStart(2, "0") + ":" +
             String(minutos).padStart(2, "0") + ":" +
             String(segundos).padStart(2, "0");
 
-        // Aviso visual quando faltar menos de 1 minuto
-        if (totalSegundos <= 60) {
+        // Aviso visual quando faltarem menos de 5 minutos
+        if (totalSegundos <= 300) {
             timerElemento.classList.add("timer-urgente");
         }
 

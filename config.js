@@ -27,7 +27,7 @@ const RIFA_CONFIG = {
         window.location.protocol === "file:"
     )
         ? "http://127.0.0.1:5000"
-        : "https://palmeiras-elenco-2026-1.onrender.com/",
+        : "https://palmeiras-elenco-2026.onrender.com",
 
 
     // -----------------------------------------------------------
@@ -45,10 +45,10 @@ const RIFA_CONFIG = {
 
 
     // -----------------------------------------------------------
-    // TEMPO PARA PAGAR (deve bater com HORAS/MINUTOS do app.py)
+    // TEMPO PARA PAGAR (deve bater com o prazo do app.py)
     // -----------------------------------------------------------
 
-    MINUTOS_PARA_PAGAR: 1440,
+    HORAS_PARA_PAGAR: 24,
 
     HORAS_PARA_ENVIAR_COMPROVANTE: 24,
 

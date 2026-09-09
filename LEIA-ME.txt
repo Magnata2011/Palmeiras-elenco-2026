@@ -1,0 +1,206 @@
+RIFA PALMEIRAS — PACOTE ATUALIZADO
+====================================
+
+O QUE ESTE ZIP CONTÉM (baseado nos arquivos que você mandou):
+- app.py
+- config.js
+- index.html
+- pagamento.html
+- pagamento.js
+- script.js
+- style.css
+- Admin.js
+- imagens/historia-1.jpg
+- imagens/fotocampo.jpg
+
+IMPORTANTE: este zip só tem os arquivos que você me enviou. Ele NÃO
+substitui o repositório inteiro — copie estes arquivos por cima dos
+correspondentes no seu projeto (Palmeiras-elenco-2026), mantendo os
+arquivos que já existem lá e que eu não recebi:
+- pagamento.css e Admin.html (não me foram enviados — não mexi neles)
+- requirements.txt
+- imagens/banner-camisa.jpg e imagens/qrcode.jpeg (não me foram
+  enviados — mantenha os que já estão no repositório)
+- imagens/historia-2.jpg pode ser apagada, não é mais usada
+
+O QUE FOI CORRIGIDO/ALTERADO:
+
+1) LOGIN DO ADMIN ("usuário ou senha incorretos")
+   Em app.py, agora o usuário e a senha das variáveis de ambiente
+   (ADMIN_USUARIO_1/2, ADMIN_SENHA_1/2) e a senha digitada no
+   formulário passam por um "trim" (remoção de espaços/quebras de
+   linha nas pontas). Isso é uma causa muito comum: ao colar a
+   senha no painel do Render, às vezes sobra um espaço ou quebra de
+   linha no fim, e a senha nunca bate.
+   Depois de publicar este app.py, revise no Render (Environment):
+   apague e recadastre ADMIN_USUARIO_1, ADMIN_SENHA_1,
+   ADMIN_USUARIO_2, ADMIN_SENHA_2 (sem espaços antes/depois) e
+   reinicie o serviço (Manual Deploy). Se quiser testar rápido, as
+   credenciais padrão continuam sendo admin / admin123 e
+   jmagno2011 / JM2011 (usadas só se as variáveis não existirem).
+
+2) PAGAMENTO: comprovante removido, vai direto pro Google Forms
+   Encontrei o motivo real do fluxo estar quebrado: seu app.py já
+   tinha sido atualizado (numa sessão anterior) para um endpoint
+   novo, /api/pagamento-confirmado, que não pede mais arquivo — só
+   marca a compra como paga e libera 24h para o admin conferir no
+   formulário. Só que pagamento.js e pagamento.html ainda estavam
+   chamando a rota antiga /api/comprovante, que nem existe mais no
+   backend (por isso o botão "Já realizei o pagamento" travava).
+   Corrigi:
+   - pagamento.js agora chama /api/pagamento-confirmado e, se der
+     certo, redireciona automaticamente para o link do Google Forms
+     configurado em GOOGLE_FORM_URL (dentro do config.js).
+   - Removi de pagamento.html toda a parte de anexar/enviar
+     comprovante e o modal de confirmação de arquivo (não são mais
+     necessários).
+
+3) AVISO DO NOME NO PIX
+   Adicionei, logo abaixo do "Pix copia e cola" em pagamento.html,
+   o aviso:
+   "*** Atenção. Antes de realizar o pagamento no seu aplicativo do
+   banco, confirme o nome do depósito para: Marcelo Nunes da Silva
+   CPF 201.237.008-09"
+
+4) HISTÓRIA (index.html)
+   Na caixa "Conheça a história", deixei só a foto da camisa
+   vermelha (historia-1.jpg) e removi as outras duas.
+
+5) TIMER (fuso horário)
+   Conferi o código do timer: a correção de fuso horário que já
+   tinha sido feita antes (o backend manda a data com "Z" indicando
+   UTC) está certa e continua funcionando — não achei mais bug de
+   fuso aqui.
+
+6) GRADE DE NÚMEROS (style.css) — bug real encontrado
+   A regra .grade-numeros estava com "display: solid;", que não é
+   um valor válido de CSS — o navegador simplesmente ignorava essa
+   linha, e a grade de 1000 números nunca virava um grid de verdade
+   (os botões só se organizavam no fluxo normal da página).
+   Corrigi para "display: grid;". Só que, ao virar um grid de
+   verdade, apareceu um segundo problema que estava escondido: a
+   regra pedia 50 colunas de no mínimo 100px cada (5000px de
+   largura mínima — não cabe em nenhuma tela). Troquei
+   "repeat(50, minmax(100px, 1fr))" por
+   "repeat(auto-fill, minmax(100px, 1fr))", que mantém o mesmo
+   tamanho mínimo de botão mas deixa o navegador calcular quantas
+   colunas cabem, sem estourar a largura da página.
+
+7) Admin.js — verificação sobre "expirar"
+   Revisei o arquivo procurando por bugs de expiração. Não achei
+   nenhum problema: o que existe é o tratamento normal e correto de
+   sessão expirada (quando o token do admin expira, o backend
+   responde 401 e o painel manda a pessoa de volta pro login) e o
+   rótulo "Expirada" para compras cujo prazo de pagamento estourou
+   — ambos batem com o que o backend já faz. Também já estava
+   ajustado pra não tentar abrir/baixar arquivo de comprovante (já
+   que isso não existe mais nesse fluxo). Não precisei mudar nada
+   nele; incluí no zip só pra manter o pacote completo.
+
+8) LOGIN DO ADMIN AINDA FALHANDO — investigação adicional
+   O código de app.py já estava corrigido (usuário e senha
+   "trimados" nos dois lados). Se continua dando "Usuário ou senha
+   incorretos" mesmo assim, o motivo quase certo é um destes dois:
+
+   a) O app.py novo ainda não foi publicado no Render. O Render só
+      atualiza o backend quando você dá "git push" com este arquivo
+      E o serviço termina de reimplantar (isso aparece como "Deploy
+      live" no painel do Render, pode levar 1-2 minutos).
+
+   b) As variáveis ADMIN_USUARIO_1/2 e ADMIN_SENHA_1/2 cadastradas
+      no Render são diferentes do que você está digitando no site.
+
+   Pra descobrir qual é o caso, adicionei um log de diagnóstico: a
+   cada tentativa de login que falhar, o Render vai imprimir nos
+   "Logs" do serviço (painel do Render → aba Logs) uma linha assim:
+
+       [login admin] Tentativa falhou. Usuário recebido: 'admin'
+       | Usuários cadastrados no momento: ['jmagno2011', 'admin']
+
+   Esse log NUNCA mostra a senha (nem a digitada, nem a certa) —
+   só o nome de usuário digitado e quais usuários estão realmente
+   cadastrados naquele momento no servidor. Depois de subir este
+   app.py e esperar o deploy terminar:
+   1. Tente logar de novo (pode usar qualquer usuário/senha, até
+      errado de propósito, só pra gerar o log).
+   2. Abra os Logs no Render e procure essa linha.
+   3. Se o "usuário recebido" não aparecer na lista de "usuários
+      cadastrados", o nome que você está digitando está diferente
+      do que está no Render (espaço, maiúscula/minúscula trocada,
+      etc.) — corrija um dos dois.
+   4. Se o usuário aparecer certinho na lista mas mesmo assim falha,
+      o problema é a senha — revise ADMIN_SENHA_1/2 no Render.
+
+9) FOTO DA HISTÓRIA MAIS ESPAÇOSA (style.css)
+   Como sobrou só a foto da camisa vermelha, o layout antigo (uma
+   coluna estreita de 210px, pensada pra 3 miniaturas empilhadas)
+   deixava ela pequena e cortada. Redesenhei só essa parte:
+   - A foto agora ocupa a largura toda do card, bem mais alta
+     (340px no computador, 220px no celular) — antes era 130px/
+     100px.
+   - O modal da história ficou um pouco mais largo (640px em vez
+     de 520px) pra a foto ter mais espaço de verdade.
+   - No celular, tirei o carrossel horizontal (que só fazia sentido
+     com várias fotos) — agora é só a foto grande, seguida do
+     texto.
+
+10) FOTO DA HISTÓRIA "NA HORIZONTAL" — corrigido
+   A foto original é vertical (432x760px). O ajuste anterior (item
+   9) forçava "height: 340px" com corte automático, o que pegava
+   só uma faixa horizontal estreita da foto — por isso ela parecia
+   "deitada". Corrigi:
+   - Voltei ao layout lado a lado: foto à esquerda (coluna de
+     240px), texto à direita, no computador.
+   - A foto agora usa "height: auto", preservando a proporção
+     vertical real, sem cortar nem esticar.
+   - No celular (tela estreita), o layout empilha (foto em cima,
+     texto embaixo), com a foto centralizada em até 220px de
+     largura — do jeito que já estava configurado para telas
+     pequenas antes.
+
+11) LOGIN DO ADMIN — causa real encontrada e confirmada
+   Não era bug de código: no Render, as variáveis de ambiente
+   tinham sido cadastradas com os nomes errados (ex: "ADMIN" e
+   "jmagno2011" como Key, em vez de ADMIN_USUARIO_1/ADMIN_SENHA_1
+   etc.). Como o app.py só reconhece exatamente ADMIN_USUARIO_1,
+   ADMIN_SENHA_1, ADMIN_USUARIO_2, ADMIN_SENHA_2, nada daquilo era
+   lido — o sistema sempre caía nos valores padrão do código
+   (jmagno2011/JM2011 e admin/admin123). Corrigido cadastrando as
+   4 variáveis com os nomes certos no Render. Confirmado que já
+   está funcionando.
+   Mesmo assim, mantive no app.py as melhorias de robustez feitas
+   durante a investigação (limpeza de espaços/aspas coladas nas
+   variáveis, e o log de diagnóstico em caso de falha) — não fazem
+   mal nenhum e ajudam se algo parecido acontecer de novo.
+
+12) "CONHEÇA A HISTÓRIA" — de botão/modal para caixa fixa na página
+   Tirei o botão "Conheça a história" do cabeçalho e o modal que
+   abria por cima da página. Agora o texto e a foto do Professor
+   Marcelo aparecem direto na página principal, numa caixa verde
+   nova (mesma cor do site), logo abaixo do cabeçalho: foto à
+   esquerda, texto à direita no computador, empilhado no celular
+   (foto em cima, texto embaixo) — mesma lógica de layout que já
+   tínhamos ajustado para a foto vertical.
+
+NÃO MUDEI o estilo/visual de mais nada além do que está listado
+acima — só o necessário pra corrigir os bugs e atender os pedidos.
+
+SOBRE O BANCO DE DADOS NO RENDER (PostgreSQL):
+Isso ainda está pendente — vimos que o Render apaga o SQLite
+(rifa.db) toda vez que o serviço reinicia ou "dorme" por
+inatividade no plano grátis, e que já existe uma variável
+DATABASE_URL configurada aí. Ainda não adaptei o app.py pra usar
+esse banco de verdade — é a próxima parte a terminar.
+
+DEPOIS DE SUBIR PRO GITHUB:
+- Suba estes arquivos, faça o deploy do backend no Render de novo
+  (ele redeploya sozinho ao dar push, se estiver conectado ao
+  repo) e teste:
+  1. Fazer uma reserva de teste e clicar em "Já realizei o
+     pagamento" — deve abrir o formulário do Google.
+  2. Testar o login do admin com as credenciais configuradas no
+     Render.
+- Se o admin.html/admin.js também mostra ou espera algum link de
+  "comprovante enviado pelo site", me manda esses arquivos que eu
+  ajusto pra refletir esse novo fluxo (agora o comprovante fica só
+  no formulário do Google, não mais no site).
