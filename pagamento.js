@@ -36,7 +36,7 @@ const voltarSelecionar = document.getElementById("voltarSelecionar");
 const pagamentoRealizado = document.getElementById("pagamentoRealizado");
 
 const areaRedirecionamento = document.getElementById("areaRedirecionamento");
-const linkFormulario = document.getElementById("linkFormulario");
+const linkPagamentoWhatsapp = document.getElementById("linkPagamentoWhatsapp");
 const textoRedirecionamento = document.getElementById("textoRedirecionamento");
 
 const qrDuvidasWhatsapp = document.getElementById("qrDuvidasWhatsapp");
@@ -550,21 +550,36 @@ pagamentoRealizado.addEventListener("click", async () => {
 
 
 // =====================================
-// REDIRECIONAR PARA O FORMULÁRIO DO GOOGLE
+// REDIRECIONAR PARA O WHATSAPP
+// =====================================
+// Em vez de mandar a pessoa pro formulário do Google, agora ela é
+// redirecionada direto pra uma conversa no WhatsApp já com a
+// mensagem pronta (código da compra, números, quantidade e valor)
+// — só falta ela anexar o comprovante e enviar.
 // =====================================
 
 function mostrarRedirecionamento(autoRedirecionar) {
 
     const quantidade = numeros.length;
 
-    const url = montarLinkFormulario({
-        token: token,
-        numeros: numeros.map(n => String(n).padStart(3, "0")).join(", "),
-        quantidade: quantidade,
-        valor: formatarValor(quantidade * PRECO)
-    });
+    const numerosTexto = numeros
+        .map(n => String(n).padStart(3, "0"))
+        .join(", ");
 
-    linkFormulario.href = url;
+    const mensagem =
+        "Olá! Realizei o pagamento da rifa do Palmeiras.\n\n" +
+        "Código da compra: " + token + "\n" +
+        "Números: " + numerosTexto + "\n" +
+        "Quantidade: " + quantidade +
+        (quantidade === 1 ? " número" : " números") + "\n" +
+        "Valor: " + formatarValor(quantidade * PRECO) + "\n\n" +
+        "Segue o comprovante em anexo.";
+
+    const url =
+        "https://wa.me/" + RIFA_CONFIG.WHATSAPP +
+        "?text=" + encodeURIComponent(mensagem);
+
+    linkPagamentoWhatsapp.href = url;
 
     areaRedirecionamento.style.display = "block";
 
@@ -572,8 +587,8 @@ function mostrarRedirecionamento(autoRedirecionar) {
 
         if (textoRedirecionamento) {
             textoRedirecionamento.textContent =
-                "Seu comprovante já foi recebido. Se ainda não " +
-                "preencheu o formulário de confirmação, clique abaixo.";
+                "Pagamento já marcado como realizado. Se ainda não " +
+                "enviou o comprovante pelo WhatsApp, clique abaixo.";
         }
 
         return;
@@ -587,7 +602,7 @@ function mostrarRedirecionamento(autoRedirecionar) {
         const atualizarContagem = () => {
 
             textoRedirecionamento.textContent =
-                "Você será redirecionado para o formulário em " +
+                "Você será redirecionado para o WhatsApp em " +
                 segundos + "s...";
 
         };
