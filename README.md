@@ -166,11 +166,6 @@ site público, ninguém entra sem usuário/senha corretos.
 **Credenciais padrão** (troque via `ADMIN_USUARIO_1/2` e
 `ADMIN_SENHA_1/2` no Render, como no Passo 2):
 
-| Usuário | Senha |
-|---|---|
-| `jmagno2011` | `JM2011` |
-| `admin` | `admin123` |
-
 As sessões de login ficam em memória — se o backend reiniciar (o que
 o Render faz sozinho de vez em quando), o admin só precisa entrar de
 novo. Isso não afeta os dados da rifa (números, compras), que agora
@@ -196,16 +191,3 @@ A pessoa não envia mais o comprovante direto no site. Ao clicar em
 de 24h) e redireciona automaticamente para o formulário do Google
 configurado em `GOOGLE_FORM_URL` no `config.js` — é lá que o
 comprovante de verdade é enviado.
-
-## Imagens
-
-- `historia-1.jpg` — Professor Marcelo Nunes (usada no banner
-  principal).
-- `banner-camisa.jpg` — ele segurando a camisa autografada (usada na
-  caixa "Conheça a história").
-- `fotocampo.jpg` — a camisa atrás da rede verde (banner 2).
-- `qrcode.jpeg` — QR Code do Pix.
-
-Pra trocar qualquer uma, é só substituir o arquivo mantendo o mesmo
-nome, ou trocar o nome nas referências dentro do `index.html` /
-`pagamento.html`.
