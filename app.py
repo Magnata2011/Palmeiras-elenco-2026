@@ -601,6 +601,14 @@ def expirar_compras():
     cursor = conexao.cursor()
 
 
+    # --------------------------------------------------------
+    # Só a reserva inicial ("pendente_pagamento") expira
+    # sozinha. Depois que a pessoa marca "já paguei"
+    # ("comprovante_enviado"), a confirmação passa a ser
+    # 100% manual — fica esperando o admin confirmar ou
+    # rejeitar no painel, sem prazo nem expiração automática.
+    # --------------------------------------------------------
+
     compras = cursor.execute("""
         SELECT
             id,
@@ -609,10 +617,7 @@ def expirar_compras():
             status,
             expira_em
         FROM compras
-        WHERE status IN (
-            'pendente_pagamento',
-            'comprovante_enviado'
-        )
+        WHERE status = 'pendente_pagamento'
         AND expira_em IS NOT NULL
     """).fetchall()
 
@@ -1190,10 +1195,11 @@ def consultar_compra(token):
 # CONFIRMAR "JÁ REALIZEI O PAGAMENTO"
 # ============================================================
 # O comprovante em si não é mais enviado pelo site — a pessoa é
-# redirecionada para o formulário do Google, que é onde o
-# comprovante de verdade fica. Aqui só registramos que ela marcou
-# como pago, e abrimos a janela de 24h para o admin conferir e
-# confirmar no formulário.
+# redirecionada para o WhatsApp, que é onde o comprovante de
+# verdade é enviado. Aqui só registramos que ela marcou como
+# pago. A partir daí a confirmação é 100% manual: fica esperando
+# o admin confirmar ou rejeitar no painel, sem prazo nem
+# expiração automática.
 # ============================================================
 
 @app.route(
@@ -1272,10 +1278,11 @@ def pagamento_confirmado():
 
         confirmado_em = agora()
 
-        expira_em = confirmado_em + timedelta(
-            hours=HORAS_EXPIRACAO
-        )
-
+        # A partir daqui não existe mais prazo: a compra fica
+        # como "comprovante_enviado" esperando confirmação
+        # manual do admin, por quanto tempo for preciso. Por
+        # isso "expira_em" é zerado (NULL) — não é mais usado
+        # pra essa etapa.
 
         cursor.execute("""
             UPDATE compras
@@ -1289,15 +1296,11 @@ def pagamento_confirmado():
                     ?,
 
                 expira_em =
-                    ?
+                    NULL
 
             WHERE token = ?
         """, (
             confirmado_em.strftime(
-                "%Y-%m-%d %H:%M:%S"
-            ),
-
-            expira_em.strftime(
                 "%Y-%m-%d %H:%M:%S"
             ),
 
@@ -1321,8 +1324,9 @@ def pagamento_confirmado():
         enviar_email_notificacao(
             "💰 Pagamento marcado como realizado",
             "Alguém marcou o pagamento como realizado e foi "
-            "redirecionado para o formulário do Google. Confira "
-            "lá a confirmação e o comprovante.\n\n"
+            "redirecionado para o WhatsApp para enviar o "
+            "comprovante. Confira lá e confirme no painel "
+            "quando puder — não tem mais prazo automático.\n\n"
             f"Código da compra: {token}\n"
             f"Números: {numeros_texto}"
         )
@@ -2348,15 +2352,7 @@ if __name__ == "__main__":
     print()
 
     print(
-        "Upload máximo: 10 MB"
-    )
-
-    print(
-        "Formatos: JPG, JPEG, PNG, WEBP, PDF"
-    )
-
-    print(
-        "Expiração após comprovante: 24 horas"
+        "Confirmação de pagamento: manual (sem prazo automático)"
     )
 
     print()
