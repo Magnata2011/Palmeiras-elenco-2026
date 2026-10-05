@@ -45,15 +45,6 @@ const RIFA_CONFIG = {
 
 
     // -----------------------------------------------------------
-    // TEMPO PARA PAGAR (deve bater com o prazo do app.py)
-    // -----------------------------------------------------------
-
-    HORAS_PARA_PAGAR: 24,
-
-    HORAS_PARA_ENVIAR_COMPROVANTE: 24,
-
-
-    // -----------------------------------------------------------
     // CONTATO (usado só pra exibir/copiar se você precisar)
     // -----------------------------------------------------------
     // WHATSAPP: código do país + DDD + número, sem espaços,
