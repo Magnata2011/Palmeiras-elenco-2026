@@ -184,12 +184,6 @@ class _ConexaoCompat:
         return self._conexao.close()
 
 
-# Tempo máximo para o admin confirmar depois que a pessoa marca
-# "já paguei" (ela é redirecionada pro formulário do Google nesse
-# meio tempo)
-
-HORAS_EXPIRACAO = 24
-
 
 # Preço de cada número (usado só para calcular o total arrecadado
 # nas estatísticas do admin). Mantenha igual ao PRECO do config.js.
