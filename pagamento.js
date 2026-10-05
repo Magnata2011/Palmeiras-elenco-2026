@@ -566,6 +566,9 @@ function mostrarRedirecionamento(autoRedirecionar) {
         .map(n => String(n).padStart(3, "0"))
         .join(", ");
 
+    // O WhatsApp usa UM asterisco (não dois) pra deixar o texto
+    // em negrito — por isso "*envie aqui o comprovante*" abaixo.
+
     const mensagem =
         "Olá! Realizei o pagamento da rifa do Palmeiras.\n\n" +
         "Código da compra: " + token + "\n" +
@@ -573,7 +576,7 @@ function mostrarRedirecionamento(autoRedirecionar) {
         "Quantidade: " + quantidade +
         (quantidade === 1 ? " número" : " números") + "\n" +
         "Valor: " + formatarValor(quantidade * PRECO) + "\n\n" +
-        "Segue o comprovante em anexo.";
+        "*Envie aqui o comprovante* 📎";
 
     const url =
         "https://wa.me/" + RIFA_CONFIG.WHATSAPP +
