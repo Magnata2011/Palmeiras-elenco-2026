@@ -26,7 +26,7 @@ app = Flask(__name__)
 # o(s) endereço(s) do seu site no GitHub Pages, separados por vírgula.
 # Exemplo (no painel do Render, em "Environment"):
 #
-ORIGENS_PERMITIDAS=https://acaosolidariamarcelonunes.com.br
+#ORIGENS_PERMITIDAS=https://acaosolidariamarcelonunes.com.br
 #
 # Se a variável não for definida, libera geral (bom só para testar
 # localmente).
