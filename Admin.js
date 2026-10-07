@@ -1138,8 +1138,8 @@ function criarCartaoCompra(compra) {
 
 
     // O acesso ao arquivo do comprovante pelo painel foi removido —
-    // a confirmação do pagamento agora passa pelo formulário do
-    // Google, então o admin não precisa mais abrir o arquivo aqui.
+    // o comprovante agora é enviado pelo WhatsApp e a confirmação
+    // é 100% manual, feita pelo admin aqui no painel, sem prazo.
 
 
     if (compra.status === "comprovante_enviado") {
