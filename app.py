@@ -241,6 +241,13 @@ def conectar():
 
     conexao.row_factory = sqlite3.Row
 
+    # Modo WAL: além de escritas, permite leituras acontecendo ao
+    # mesmo tempo sem travar o arquivo inteiro. Sem isso, a thread
+    # de expiração automática (que roda a cada 30s) podia colidir
+    # com uma requisição comum (ex: /api/numeros) e gerar o erro
+    # "database is locked".
+    conexao.execute("PRAGMA journal_mode=WAL")
+
     return conexao
 
 
@@ -400,8 +407,33 @@ def criar_banco():
 # ============================================================
 # EXPIRAR COMPRAS
 # ============================================================
+# expirar_compras() é chamada tanto pela thread de verificação
+# automática (a cada 30s) quanto no início de quase toda rota.
+# Esse lock evita que duas chamadas rodem ao mesmo tempo dentro do
+# mesmo processo, o que também ajudava a causar o erro "database
+# is locked".
+
+_lock_expirar_compras = threading.Lock()
+
 
 def expirar_compras():
+
+    if not _lock_expirar_compras.acquire(blocking=False):
+
+        # Já tem uma verificação em andamento agora mesmo; não
+        # precisa empilhar outra, a próxima chamada já resolve.
+        return
+
+    try:
+
+        _expirar_compras_interno()
+
+    finally:
+
+        _lock_expirar_compras.release()
+
+
+def _expirar_compras_interno():
 
     conexao = conectar()
 
