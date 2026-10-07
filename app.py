@@ -241,12 +241,16 @@ def conectar():
 
     conexao.row_factory = sqlite3.Row
 
-    # Modo WAL: além de escritas, permite leituras acontecendo ao
-    # mesmo tempo sem travar o arquivo inteiro. Sem isso, a thread
-    # de expiração automática (que roda a cada 30s) podia colidir
-    # com uma requisição comum (ex: /api/numeros) e gerar o erro
-    # "database is locked".
-    conexao.execute("PRAGMA journal_mode=WAL")
+    # O modo WAL (que tentamos usar aqui antes para evitar o erro
+    # "database is locked") quebrou tudo no disco do Render com
+    # "sqlite3.OperationalError: disk I/O error" em toda consulta —
+    # o sistema de arquivos daqui não suporta bem a memória
+    # compartilhada que o WAL precisa. Voltando explicitamente para
+    # o modo padrão (DELETE): isso também converte de volta o banco
+    # que já tinha ficado "preso" em modo WAL, sem apagar nenhum
+    # dado. A proteção contra "database is locked" continua pelo
+    # lock em expirar_compras(), que não depende de WAL.
+    conexao.execute("PRAGMA journal_mode=DELETE")
 
     return conexao
 
