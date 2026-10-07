@@ -68,7 +68,7 @@ DATABASE = "rifa.db"
 # nas estatísticas do admin). Mantenha igual ao PRECO do config.js.
 
 PRECO_NUMERO = float(
-    os.environ.get("PRECO_NUMERO", "30")
+    os.environ.get("PRECO_NUMERO", "10")
 )
 
 
