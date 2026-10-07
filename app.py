@@ -448,10 +448,7 @@ def _expirar_compras_interno():
             status,
             expira_em
         FROM compras
-        WHERE status IN (
-            'pendente_pagamento',
-            'comprovante_enviado'
-        )
+        WHERE status = 'pendente_pagamento'
         AND expira_em IS NOT NULL
     """).fetchall()
 
