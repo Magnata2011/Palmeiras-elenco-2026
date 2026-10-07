@@ -11,22 +11,33 @@ import secrets
 from functools import wraps
 from datetime import datetime, timedelta
 
+
 # ============================================================
 # CONFIGURAÇÃO
 # ============================================================
 
 app = Flask(__name__)
 
-# ============================================================
-# CORS
-# ============================================================
 
-origens_env = os.environ.get("ORIGENS_PERMITIDAS", "").strip()
+# ------------------------------------------------------------------
+# CORS
+# ------------------------------------------------------------------
+# Em produção, defina a variável de ambiente ORIGENS_PERMITIDAS com
+# o(s) endereço(s) do seu site no GitHub Pages, separados por vírgula.
+# Exemplo (no painel do Render, em "Environment"):
+#
+#   ORIGENS_PERMITIDAS=https://seu-usuario.github.io
+#
+# Se a variável não for definida, libera geral (bom só para testar
+# localmente).
+# ------------------------------------------------------------------
+
+origens_env = os.environ.get("ORIGENS_PERMITIDAS")
 
 if origens_env:
 
     origens_permitidas = [
-        origem.strip().rstrip("/")
+        origem.strip()
         for origem in origens_env.split(",")
         if origem.strip()
     ]
@@ -34,166 +45,59 @@ if origens_env:
     CORS(
         app,
         origins=origens_permitidas,
-        allow_headers=["Content-Type", "Authorization"],
-        methods=["GET", "POST", "PUT", "OPTIONS"]
+        allow_headers=["Content-Type", "Authorization"]
     )
 
 else:
 
-    # Desenvolvimento local
     CORS(
         app,
-        allow_headers=["Content-Type", "Authorization"],
-        methods=["GET", "POST", "PUT", "OPTIONS"]
+        allow_headers=["Content-Type", "Authorization"]
     )
-
-
-# ============================================================
-# BANCO
-# ============================================================
 
 DATABASE = "rifa.db"
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
-USANDO_POSTGRES = bool(DATABASE_URL)
-
-if USANDO_POSTGRES:
-
-    import psycopg2
-    import psycopg2.extras
-
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = (
-            "postgresql://"
-            + DATABASE_URL[len("postgres://"):]
-        )
+# Depois que a pessoa marca "já paguei", a confirmação do admin
+# passou a ser 100% manual — não existe mais prazo/expiração
+# automática nessa etapa. O admin confirma ou rejeita quando quiser,
+# direto pelo painel. (HORAS_EXPIRACAO foi removido de propósito.)
 
 
-# ============================================================
-# COMPATIBILIDADE SQLITE / POSTGRESQL
-# ============================================================
-
-class _CursorCompat:
-
-    def __init__(self, cursor_real):
-
-        self._cursor = cursor_real
-        self._lastrowid = None
-
-    def execute(self, sql, parametros=()):
-
-        sql_final = sql
-
-        if USANDO_POSTGRES:
-            sql_final = sql_final.replace("?", "%s")
-
-        self._cursor.execute(
-            sql_final,
-            parametros
-        )
-
-        if (
-            USANDO_POSTGRES
-            and "RETURNING ID" in sql_final.upper()
-        ):
-
-            try:
-
-                linha = self._cursor.fetchone()
-
-                if linha:
-                    self._lastrowid = linha["id"]
-
-            except Exception:
-
-                self._lastrowid = None
-
-        return self
-
-    def fetchone(self):
-
-        return self._cursor.fetchone()
-
-    def fetchall(self):
-
-        return self._cursor.fetchall()
-
-    @property
-    def lastrowid(self):
-
-        if USANDO_POSTGRES:
-            return self._lastrowid
-
-        return self._cursor.lastrowid
-
-    @property
-    def rowcount(self):
-
-        return self._cursor.rowcount
-
-
-class _ConexaoCompat:
-
-    def __init__(self, conexao_real):
-
-        self._conexao = conexao_real
-
-    def cursor(self):
-
-        if USANDO_POSTGRES:
-
-            cursor_real = self._conexao.cursor(
-                cursor_factory=psycopg2.extras.RealDictCursor
-            )
-
-        else:
-
-            cursor_real = self._conexao.cursor()
-
-        return _CursorCompat(cursor_real)
-
-    def execute(self, sql, parametros=()):
-
-        return self.cursor().execute(
-            sql,
-            parametros
-        )
-
-    def commit(self):
-
-        return self._conexao.commit()
-
-    def rollback(self):
-
-        return self._conexao.rollback()
-
-    def close(self):
-
-        return self._conexao.close()
-
-
-# ============================================================
-# CONFIGURAÇÕES DA RIFA
-# ============================================================
+# Preço de cada número (usado só para calcular o total arrecadado
+# nas estatísticas do admin). Mantenha igual ao PRECO do config.js.
 
 PRECO_NUMERO = float(
-    os.environ.get(
-        "PRECO_NUMERO",
-        "30"
-    )
+    os.environ.get("PRECO_NUMERO", "30")
 )
 
+
+# Quantidade total de números da rifa (mantenha igual ao
+# TOTAL_NUMEROS do config.js do site)
+
 TOTAL_NUMEROS = int(
-    os.environ.get(
-        "TOTAL_NUMEROS",
-        "1000"
-    )
+    os.environ.get("TOTAL_NUMEROS", "1000")
 )
 
 
 # ============================================================
-# E-MAIL
+# NOTIFICAÇÃO POR E-MAIL (OPCIONAL)
+# ============================================================
+# Além da notificação sonora/no navegador que já aparece no painel
+# admin quando ele está aberto, dá pra receber um e-mail avisando de
+# reservas e comprovantes — útil pra quando ninguém está de olho no
+# painel. É opcional: se as variáveis de ambiente abaixo não forem
+# configuradas, essa função simplesmente não faz nada (sem erro).
+#
+# Pra usar com Gmail: crie uma "Senha de app" em
+# https://myaccount.google.com/apppasswords (precisa da verificação
+# em duas etapas ativada) e configure no Render:
+#
+#   SMTP_HOST=smtp.gmail.com
+#   SMTP_PORT=465
+#   SMTP_USUARIO=seuemail@gmail.com
+#   SMTP_SENHA=a senha de app gerada (não é a senha normal do Gmail)
+#   EMAIL_NOTIFICACAO_ADMIN=seuemail@gmail.com (pode ser o mesmo)
 # ============================================================
 
 import smtplib
@@ -208,106 +112,61 @@ def enviar_email_notificacao(assunto, corpo):
     senha_smtp = os.environ.get("SMTP_SENHA")
     destino = os.environ.get("EMAIL_NOTIFICACAO_ADMIN")
 
-    if not all([
-        host,
-        porta,
-        usuario_smtp,
-        senha_smtp,
-        destino
-    ]):
-
+    if not all([host, porta, usuario_smtp, senha_smtp, destino]):
+        # Notificação por e-mail não configurada — não faz nada.
         return
 
     try:
 
-        mensagem = MIMEText(
-            corpo,
-            "plain",
-            "utf-8"
-        )
-
+        mensagem = MIMEText(corpo, "plain", "utf-8")
         mensagem["Subject"] = assunto
         mensagem["From"] = usuario_smtp
         mensagem["To"] = destino
 
-        with smtplib.SMTP_SSL(
-            host,
-            int(porta)
-        ) as servidor:
-
-            servidor.login(
-                usuario_smtp,
-                senha_smtp
-            )
-
-            servidor.sendmail(
-                usuario_smtp,
-                [destino],
-                mensagem.as_string()
-            )
+        with smtplib.SMTP_SSL(host, int(porta)) as servidor:
+            servidor.login(usuario_smtp, senha_smtp)
+            servidor.sendmail(usuario_smtp, [destino], mensagem.as_string())
 
     except Exception as erro:
 
-        print(
-            "Erro ao enviar e-mail de notificação:",
-            erro
-        )
+        # Nunca deixa a compra falhar por causa do e-mail —
+        # só registra no log do servidor.
+        print("Erro ao enviar e-mail de notificação:", erro)
 
 
 # ============================================================
-# LOGIN ADMIN
+# LOGIN DO ADMINISTRADOR
+# ============================================================
+# As credenciais podem ser trocadas sem mexer no código, definindo
+# as variáveis de ambiente ADMIN_USUARIO_1 / ADMIN_SENHA_1 e
+# ADMIN_USUARIO_2 / ADMIN_SENHA_2 (por exemplo, no painel do Render).
+# Se não forem definidas, usa os valores abaixo como padrão.
 # ============================================================
 
 def _var_ambiente_limpa(nome, padrao):
+    """
+    Lê uma variável de ambiente e remove espaços/quebras de linha
+    acidentais nas pontas (comuns ao colar no painel do Render,
+    e que antes faziam o login falhar mesmo com a senha "certa").
+    """
 
-    valor = os.environ.get(nome)
+    valor = os.environ.get(nome, padrao)
 
-    if valor is None:
-        return padrao
-
-    valor = valor.strip()
-
-    if (
-        len(valor) >= 2
-        and valor[0] == valor[-1]
-        and valor[0] in ("'", '"')
-    ):
-
-        valor = valor[1:-1].strip()
-
-    return valor if valor else padrao
+    return valor.strip() if valor is not None else valor
 
 
 ADMIN_USUARIOS = {
+    _var_ambiente_limpa("ADMIN_USUARIO_1", "jmagno2011"):
+        _var_ambiente_limpa("ADMIN_SENHA_1", "JM2011"),
 
-    _var_ambiente_limpa(
-        "ADMIN_USUARIO_1",
-        "jmagno2011"
-    ):
-
-    _var_ambiente_limpa(
-        "ADMIN_SENHA_1",
-        "JM2011"
-    ),
-
-    _var_ambiente_limpa(
-        "ADMIN_USUARIO_2",
-        "admin"
-    ):
-
-    _var_ambiente_limpa(
-        "ADMIN_SENHA_2",
-        "admin123"
-    )
-
+    _var_ambiente_limpa("ADMIN_USUARIO_2", "admin"):
+        _var_ambiente_limpa("ADMIN_SENHA_2", "admin123"),
 }
 
 
-print(
-    "[admin] Usuários administradores carregados: "
-    + repr(list(ADMIN_USUARIOS.keys()))
-)
-
+# Sessões ativas do admin: token -> {"usuario":..., "expira_em":...}
+# Fica em memória (não precisa de tabela no banco); se o servidor
+# reiniciar, o admin só precisa logar de novo.
 
 SESSOES_ADMIN = {}
 
@@ -329,21 +188,21 @@ def limpar_sessoes_expiradas():
         ]
 
         for token in expiradas:
-
             del SESSOES_ADMIN[token]
 
 
 def exigir_login_admin(funcao):
+    """
+    Decorador: protege uma rota exigindo um cabeçalho
+    "Authorization: Bearer <token>" válido, obtido em /api/admin/login.
+    """
 
     @wraps(funcao)
     def decorada(*args, **kwargs):
 
         limpar_sessoes_expiradas()
 
-        cabecalho = request.headers.get(
-            "Authorization",
-            ""
-        )
+        cabecalho = request.headers.get("Authorization", "")
 
         if not cabecalho.startswith("Bearer "):
 
@@ -352,64 +211,41 @@ def exigir_login_admin(funcao):
                 "erro": "Login necessário."
             }), 401
 
-        token_sessao = cabecalho[
-            len("Bearer "):
-        ]
+        token_sessao = cabecalho[len("Bearer "):]
 
         with SESSOES_LOCK:
-
-            sessao_valida = (
-                token_sessao
-                in SESSOES_ADMIN
-            )
+            sessao_valida = token_sessao in SESSOES_ADMIN
 
         if not sessao_valida:
 
             return jsonify({
                 "sucesso": False,
-                "erro":
-                    "Sessão inválida ou expirada. "
-                    "Faça login novamente."
+                "erro": "Sessão inválida ou expirada. Faça login novamente."
             }), 401
 
-        return funcao(
-            *args,
-            **kwargs
-        )
+        return funcao(*args, **kwargs)
 
     return decorada
 
 
 # ============================================================
-# CONEXÃO
+# BANCO DE DADOS
 # ============================================================
 
 def conectar():
 
-    if USANDO_POSTGRES:
-
-        conexao_real = psycopg2.connect(
-            DATABASE_URL
-        )
-
-        return _ConexaoCompat(
-            conexao_real
-        )
-
-    conexao_real = sqlite3.connect(
+    conexao = sqlite3.connect(
         DATABASE,
         timeout=30
     )
 
-    conexao_real.row_factory = sqlite3.Row
+    conexao.row_factory = sqlite3.Row
 
-    return _ConexaoCompat(
-        conexao_real
-    )
+    return conexao
 
 
 # ============================================================
-# DATA / HORA
+# DATA/HORA
 # ============================================================
 
 def agora():
@@ -425,43 +261,41 @@ def agora_texto():
 
 
 def data_para_json(valor):
+    """
+    Formata uma data para mandar pro navegador, deixando explícito
+    que é UTC (o servidor roda em UTC, seja local ou no Render).
+
+    Sem isso, o navegador interpretava a data como se already fosse
+    no fuso horário local da pessoa (ex: Brasil, UTC-3), fazendo o
+    cronômetro de pagamento mostrar quase 3 horas em vez dos 5
+    minutos reais.
+
+    Aceita tanto um objeto datetime quanto o texto já salvo no
+    banco (formato "AAAA-MM-DD HH:MM:SS").
+    """
 
     if valor is None:
         return None
 
     if isinstance(valor, str):
+        return valor.replace(" ", "T") + "Z"
 
-        # Se já vier em formato ISO com Z
-        if valor.endswith("Z"):
-            return valor
-
-        return (
-            valor.replace(" ", "T")
-            + "Z"
-        )
-
-    return (
-        valor.strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        )
-    )
+    return valor.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def hora_brasilia_texto(dt):
+    """
+    Só para textos lidos por humanos (e-mails de notificação) —
+    nunca usar o resultado disso em cálculos ou comparações, é
+    apenas um ajuste de exibição (o servidor roda em UTC).
+    """
 
     if dt is None:
         return "-"
 
-    ajustada = dt - timedelta(
-        hours=3
-    )
+    ajustada = dt - timedelta(hours=3)
 
-    return (
-        ajustada.strftime(
-            "%d/%m/%Y %H:%M:%S"
-        )
-        + " (horário de Brasília)"
-    )
+    return ajustada.strftime("%d/%m/%Y %H:%M:%S") + " (horário de Brasília)"
 
 
 def texto_para_data(valor):
@@ -469,30 +303,16 @@ def texto_para_data(valor):
     if not valor:
         return None
 
-    if isinstance(valor, datetime):
-        return valor
-
     try:
 
         return datetime.strptime(
-            str(valor),
+            valor,
             "%Y-%m-%d %H:%M:%S"
         )
 
     except ValueError:
 
-        try:
-
-            return datetime.fromisoformat(
-                str(valor).replace(
-                    "Z",
-                    ""
-                )
-            )
-
-        except Exception:
-
-            return None
+        return None
 
 
 # ============================================================
@@ -505,157 +325,80 @@ def criar_banco():
 
     cursor = conexao.cursor()
 
-    try:
 
-        # ====================================================
-        # NÚMEROS
-        # ====================================================
+    # --------------------------------------------------------
+    # TABELA DOS NÚMEROS
+    # --------------------------------------------------------
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS numeros (
+
+            numero INTEGER PRIMARY KEY,
+
+            status TEXT NOT NULL
+                DEFAULT 'disponivel'
+
+        )
+    """)
+
+
+    # --------------------------------------------------------
+    # TABELA DAS COMPRAS
+    # --------------------------------------------------------
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS compras (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            token TEXT NOT NULL UNIQUE,
+
+            numeros TEXT NOT NULL,
+
+            status TEXT NOT NULL
+                DEFAULT 'pendente_pagamento',
+
+            criado_em TEXT NOT NULL,
+
+            comprovante TEXT,
+
+            comprovante_enviado_em TEXT,
+
+            expira_em TEXT,
+
+            confirmado_em TEXT
+
+        )
+    """)
+
+
+    # --------------------------------------------------------
+    # CRIAR OS 1000 NÚMEROS
+    # --------------------------------------------------------
+
+    for numero in range(1, TOTAL_NUMEROS + 1):
 
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS numeros (
-
-                numero INTEGER PRIMARY KEY,
-
-                status TEXT NOT NULL
-                    DEFAULT 'disponivel'
-
+            INSERT OR IGNORE INTO numeros
+            (
+                numero,
+                status
             )
-        """)
+            VALUES
+            (
+                ?,
+                'disponivel'
+            )
+        """, (numero,))
 
-        # ====================================================
-        # COMPRAS
-        # ====================================================
 
-        if USANDO_POSTGRES:
+    conexao.commit()
 
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS compras (
-
-                    id SERIAL PRIMARY KEY,
-
-                    token TEXT NOT NULL UNIQUE,
-
-                    numeros TEXT NOT NULL,
-
-                    status TEXT NOT NULL
-                        DEFAULT 'pendente_pagamento',
-
-                    criado_em TEXT NOT NULL,
-
-                    comprovante TEXT,
-
-                    comprovante_enviado_em TEXT,
-
-                    expira_em TEXT,
-
-                    confirmado_em TEXT
-
-                )
-            """)
-
-        else:
-
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS compras (
-
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-                    token TEXT NOT NULL UNIQUE,
-
-                    numeros TEXT NOT NULL,
-
-                    status TEXT NOT NULL
-                        DEFAULT 'pendente_pagamento',
-
-                    criado_em TEXT NOT NULL,
-
-                    comprovante TEXT,
-
-                    comprovante_enviado_em TEXT,
-
-                    expira_em TEXT,
-
-                    confirmado_em TEXT
-
-                )
-            """)
-
-        # ====================================================
-        # CRIAR NÚMEROS
-        # ====================================================
-
-        for numero in range(
-            1,
-            TOTAL_NUMEROS + 1
-        ):
-
-            if USANDO_POSTGRES:
-
-                cursor.execute("""
-                    INSERT INTO numeros
-                    (
-                        numero,
-                        status
-                    )
-                    VALUES
-                    (
-                        ?,
-                        'disponivel'
-                    )
-                    ON CONFLICT (numero)
-                    DO NOTHING
-                """, (numero,))
-
-            else:
-
-                cursor.execute("""
-                    INSERT OR IGNORE INTO numeros
-                    (
-                        numero,
-                        status
-                    )
-                    VALUES
-                    (
-                        ?,
-                        'disponivel'
-                    )
-                """, (numero,))
-
-        conexao.commit()
-
-        print(
-            "[banco] Banco inicializado com sucesso."
-        )
-
-    except Exception:
-
-        conexao.rollback()
-
-        raise
-
-    finally:
-
-        conexao.close()
+    conexao.close()
 
 
 # ============================================================
 # EXPIRAR COMPRAS
-# ============================================================
-#
-# IMPORTANTE:
-#
-# SOMENTE compras com:
-#
-#     status = pendente_pagamento
-#
-# podem expirar.
-#
-# Quando a pessoa clica em "Já realizei o pagamento":
-#
-#     status = comprovante_enviado
-#     expira_em = NULL
-#
-# Portanto essa compra nunca mais é expirada automaticamente.
 # ============================================================
 
 def expirar_compras():
@@ -664,74 +407,83 @@ def expirar_compras():
 
     cursor = conexao.cursor()
 
-    try:
 
-        compras = cursor.execute("""
-            SELECT
-                id,
-                token,
-                numeros,
-                status,
-                expira_em
-            FROM compras
-            WHERE status = 'pendente_pagamento'
-            AND expira_em IS NOT NULL
-        """).fetchall()
+    compras = cursor.execute("""
+        SELECT
+            id,
+            token,
+            numeros,
+            status,
+            expira_em
+        FROM compras
+        WHERE status IN (
+            'pendente_pagamento',
+            'comprovante_enviado'
+        )
+        AND expira_em IS NOT NULL
+    """).fetchall()
 
-        agora_atual = agora()
 
-        for compra in compras:
+    agora_atual = agora()
 
-            data_expiracao = texto_para_data(
-                compra["expira_em"]
-            )
 
-            if data_expiracao is None:
-                continue
+    for compra in compras:
 
-            if agora_atual >= data_expiracao:
+        data_expiracao = texto_para_data(
+            compra["expira_em"]
+        )
 
-                try:
 
-                    numeros = json.loads(
-                        compra["numeros"]
-                    )
+        if data_expiracao is None:
+            continue
 
-                except Exception:
 
-                    numeros = []
+        if agora_atual >= data_expiracao:
 
-                for numero in numeros:
+            try:
 
-                    cursor.execute("""
-                        UPDATE numeros
+                numeros = json.loads(
+                    compra["numeros"]
+                )
 
-                        SET status = 'disponivel'
+            except Exception:
 
-                        WHERE numero = ?
+                numeros = []
 
-                        AND status = 'pendente'
-                    """, (numero,))
+
+            # ---------------------------------------------
+            # LIBERAR SOMENTE NÚMEROS PENDENTES
+            # ---------------------------------------------
+
+            for numero in numeros:
 
                 cursor.execute("""
-                    UPDATE compras
+                    UPDATE numeros
 
-                    SET status = 'expirada'
+                    SET status = 'disponivel'
 
-                    WHERE id = ?
-                """, (compra["id"],))
+                    WHERE numero = ?
 
-        conexao.commit()
+                    AND status = 'pendente'
+                """, (numero,))
 
-    except Exception:
 
-        conexao.rollback()
+            # ---------------------------------------------
+            # MARCAR COMPRA COMO EXPIRADA
+            # ---------------------------------------------
 
-        raise
+            cursor.execute("""
+                UPDATE compras
 
-    finally:
+                SET status = 'expirada'
 
-        conexao.close()
+                WHERE id = ?
+            """, (compra["id"],))
+
+
+    conexao.commit()
+
+    conexao.close()
 
 
 # ============================================================
@@ -755,7 +507,11 @@ def iniciar_expiracao_automatica():
                     erro
                 )
 
+
+            # Verifica a cada 30 segundos
+
             time.sleep(30)
+
 
     thread = threading.Thread(
         target=verificar,
@@ -766,7 +522,7 @@ def iniciar_expiracao_automatica():
 
 
 # ============================================================
-# ROTA PRINCIPAL
+# VERIFICAÇÃO (usado pela hospedagem para checar se está no ar)
 # ============================================================
 
 @app.route(
@@ -777,11 +533,7 @@ def verificacao():
 
     return jsonify({
         "sucesso": True,
-        "mensagem": "API da rifa está no ar.",
-        "banco":
-            "postgresql"
-            if USANDO_POSTGRES
-            else "sqlite"
+        "mensagem": "API da rifa está no ar."
     })
 
 
@@ -797,21 +549,19 @@ def listar_numeros():
 
     expirar_compras()
 
+
     conexao = conectar()
 
-    try:
+    numeros = conexao.execute("""
+        SELECT
+            numero,
+            status
+        FROM numeros
+        ORDER BY numero
+    """).fetchall()
 
-        numeros = conexao.execute("""
-            SELECT
-                numero,
-                status
-            FROM numeros
-            ORDER BY numero
-        """).fetchall()
+    conexao.close()
 
-    finally:
-
-        conexao.close()
 
     return jsonify([
 
@@ -837,21 +587,19 @@ def pegar_numero(numero):
 
     expirar_compras()
 
+
     conexao = conectar()
 
-    try:
+    resultado = conexao.execute("""
+        SELECT
+            numero,
+            status
+        FROM numeros
+        WHERE numero = ?
+    """, (numero,)).fetchone()
 
-        resultado = conexao.execute("""
-            SELECT
-                numero,
-                status
-            FROM numeros
-            WHERE numero = ?
-        """, (numero,)).fetchone()
+    conexao.close()
 
-    finally:
-
-        conexao.close()
 
     if resultado is None:
 
@@ -859,6 +607,7 @@ def pegar_numero(numero):
             "sucesso": False,
             "erro": "Número não encontrado."
         }), 404
+
 
     return jsonify({
         "sucesso": True,
@@ -879,7 +628,9 @@ def reservar():
 
     expirar_compras()
 
+
     dados = request.get_json()
+
 
     if not dados:
 
@@ -888,20 +639,27 @@ def reservar():
             "erro": "Dados não enviados."
         }), 400
 
+
     numeros = dados.get(
         "numeros",
         []
     )
 
-    if (
-        not isinstance(numeros, list)
-        or not numeros
-    ):
+
+    if not isinstance(
+        numeros,
+        list
+    ) or not numeros:
 
         return jsonify({
             "sucesso": False,
             "erro": "Nenhum número enviado."
         }), 400
+
+
+    # --------------------------------------------------------
+    # NORMALIZAR NÚMEROS
+    # --------------------------------------------------------
 
     try:
 
@@ -919,19 +677,10 @@ def reservar():
             "erro": "Lista de números inválida."
         }), 400
 
-    # Não permite 0, negativos ou números
-    # acima do total configurado.
 
-    if any(
-        numero < 1
-        or numero > TOTAL_NUMEROS
-        for numero in numeros
-    ):
-
-        return jsonify({
-            "sucesso": False,
-            "erro": "Um ou mais números são inválidos."
-        }), 400
+    # --------------------------------------------------------
+    # VALIDAR QUANTIDADE
+    # --------------------------------------------------------
 
     if len(numeros) > TOTAL_NUMEROS:
 
@@ -940,15 +689,17 @@ def reservar():
             "erro": "Quantidade de números inválida."
         }), 400
 
+
     conexao = conectar()
 
     cursor = conexao.cursor()
 
+
     try:
 
-        # ====================================================
-        # VERIFICAR NÚMEROS
-        # ====================================================
+        # ----------------------------------------------------
+        # VERIFICAR TODOS
+        # ----------------------------------------------------
 
         for numero in numeros:
 
@@ -959,9 +710,11 @@ def reservar():
                 WHERE numero = ?
             """, (numero,)).fetchone()
 
+
             if resultado is None:
 
                 conexao.rollback()
+                conexao.close()
 
                 return jsonify({
                     "sucesso": False,
@@ -969,11 +722,15 @@ def reservar():
                         f"O número {numero} não existe."
                 }), 404
 
+
             status = resultado["status"]
+
 
             if status != "disponivel":
 
                 conexao.rollback()
+                conexao.close()
+
 
                 if status == "pendente":
 
@@ -989,35 +746,41 @@ def reservar():
                         "já foi comprado por outra pessoa."
                     )
 
+
                 return jsonify({
                     "sucesso": False,
                     "erro": mensagem
                 }), 409
 
-        # ====================================================
-        # TOKEN
-        # ====================================================
+
+        # ----------------------------------------------------
+        # GERAR TOKEN DA COMPRA
+        # ----------------------------------------------------
 
         token = str(
             uuid.uuid4()
         )
 
+
         criado_em = agora()
 
-        # ====================================================
-        # PRAZO DE PAGAMENTO
-        # ====================================================
 
-        expira_em = (
-            criado_em
-            + timedelta(hours=24)
+        # ----------------------------------------------------
+        # PRAZO INICIAL
+        #
+        # 5 minutos para efetuar o pagamento.
+        # ----------------------------------------------------
+
+        expira_em = criado_em + timedelta(
+            minutes=5
         )
 
-        # ====================================================
-        # CRIAR COMPRA
-        # ====================================================
 
-        sql_insert = """
+        # ----------------------------------------------------
+        # CRIAR COMPRA
+        # ----------------------------------------------------
+
+        cursor.execute("""
             INSERT INTO compras
             (
                 token,
@@ -1026,6 +789,7 @@ def reservar():
                 criado_em,
                 expira_em
             )
+
             VALUES
             (
                 ?,
@@ -1034,31 +798,24 @@ def reservar():
                 ?,
                 ?
             )
-        """
-
-        if USANDO_POSTGRES:
-
-            sql_insert += " RETURNING id"
-
-        cursor.execute(
-            sql_insert,
-            (
-                token,
-                json.dumps(numeros),
-                criado_em.strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                ),
-                expira_em.strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
+        """, (
+            token,
+            json.dumps(numeros),
+            criado_em.strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
+            expira_em.strftime(
+                "%Y-%m-%d %H:%M:%S"
             )
-        )
+        ))
+
 
         compra_id = cursor.lastrowid
 
-        # ====================================================
+
+        # ----------------------------------------------------
         # RESERVAR NÚMEROS
-        # ====================================================
+        # ----------------------------------------------------
 
         for numero in numeros:
 
@@ -1072,22 +829,65 @@ def reservar():
                 AND status = 'disponivel'
             """, (numero,))
 
+
             if cursor.rowcount != 1:
 
                 conexao.rollback()
+                conexao.close()
 
                 return jsonify({
                     "sucesso": False,
                     "erro":
-                        f"O número {numero} acabou de "
-                        "ser reservado."
+                        f"O número {numero} acabou de ser reservado."
                 }), 409
 
+
         conexao.commit()
+
+        conexao.close()
+
+
+        numeros_texto = ", ".join(
+            str(numero).zfill(3) for numero in numeros
+        )
+
+        enviar_email_notificacao(
+            "🎟️ Nova reserva na rifa",
+            "Alguém acabou de reservar números e tem 5 minutos "
+            "para pagar.\n\n"
+            f"Código da compra: {token}\n"
+            f"Números: {numeros_texto}\n"
+            f"Quantidade: {len(numeros)}\n"
+            f"Expira em: {hora_brasilia_texto(expira_em)}"
+        )
+
+
+        return jsonify({
+
+            "sucesso": True,
+
+            "mensagem":
+                "Números reservados com sucesso.",
+
+            "compra_id":
+                compra_id,
+
+            "token":
+                token,
+
+            "numeros":
+                numeros,
+
+            "expira_em":
+                data_para_json(expira_em)
+
+        })
+
 
     except Exception as erro:
 
         conexao.rollback()
+        conexao.close()
 
         print(
             "Erro ao reservar:",
@@ -1099,47 +899,6 @@ def reservar():
             "erro":
                 "Erro interno ao reservar os números."
         }), 500
-
-    finally:
-
-        conexao.close()
-
-    numeros_texto = ", ".join(
-        str(numero).zfill(3)
-        for numero in numeros
-    )
-
-    enviar_email_notificacao(
-        "🎟️ Nova reserva na rifa",
-        "Alguém acabou de reservar números e tem "
-        "24 horas para pagar.\n\n"
-        f"Código da compra: {token}\n"
-        f"Números: {numeros_texto}\n"
-        f"Quantidade: {len(numeros)}\n"
-        f"Expira em: "
-        f"{hora_brasilia_texto(expira_em)}"
-    )
-
-    return jsonify({
-
-        "sucesso": True,
-
-        "mensagem":
-            "Números reservados com sucesso.",
-
-        "compra_id":
-            compra_id,
-
-        "token":
-            token,
-
-        "numeros":
-            numeros,
-
-        "expira_em":
-            data_para_json(expira_em)
-
-    })
 
 
 # ============================================================
@@ -1154,28 +913,28 @@ def consultar_compra(token):
 
     expirar_compras()
 
+
     conexao = conectar()
 
-    try:
 
-        compra = conexao.execute("""
-            SELECT
-                id,
-                token,
-                numeros,
-                status,
-                criado_em,
-                comprovante,
-                comprovante_enviado_em,
-                expira_em,
-                confirmado_em
-            FROM compras
-            WHERE token = ?
-        """, (token,)).fetchone()
+    compra = conexao.execute("""
+        SELECT
+            id,
+            token,
+            numeros,
+            status,
+            criado_em,
+            comprovante,
+            comprovante_enviado_em,
+            expira_em,
+            confirmado_em
+        FROM compras
+        WHERE token = ?
+    """, (token,)).fetchone()
 
-    finally:
 
-        conexao.close()
+    conexao.close()
+
 
     if compra is None:
 
@@ -1183,6 +942,7 @@ def consultar_compra(token):
             "sucesso": False,
             "erro": "Compra não encontrada."
         }), 404
+
 
     try:
 
@@ -1193,6 +953,7 @@ def consultar_compra(token):
     except Exception:
 
         numeros = []
+
 
     return jsonify({
 
@@ -1213,27 +974,19 @@ def consultar_compra(token):
                 compra["status"],
 
             "criado_em":
-                data_para_json(
-                    compra["criado_em"]
-                ),
+                data_para_json(compra["criado_em"]),
 
             "comprovante":
                 compra["comprovante"],
 
             "comprovante_enviado_em":
-                data_para_json(
-                    compra["comprovante_enviado_em"]
-                ),
+                data_para_json(compra["comprovante_enviado_em"]),
 
             "expira_em":
-                data_para_json(
-                    compra["expira_em"]
-                ),
+                data_para_json(compra["expira_em"]),
 
             "confirmado_em":
-                data_para_json(
-                    compra["confirmado_em"]
-                )
+                data_para_json(compra["confirmado_em"])
 
         }
 
@@ -1241,20 +994,13 @@ def consultar_compra(token):
 
 
 # ============================================================
-# PAGAMENTO CONFIRMADO PELO CLIENTE
+# CONFIRMAR "JÁ REALIZEI O PAGAMENTO"
 # ============================================================
-#
-# A pessoa clicou em "Já realizei o pagamento".
-#
-# NÃO confirma a compra.
-#
-# Apenas muda:
-#
-# pendente_pagamento
-#        ↓
-# comprovante_enviado
-#
-# E remove o prazo.
+# O comprovante em si não é mais enviado pelo site — a pessoa é
+# redirecionada para o WhatsApp, onde deve enviar o comprovante de
+# verdade. Aqui só registramos que ela marcou como pago. A partir
+# daí não existe mais prazo: a compra fica aguardando o admin
+# confirmar ou rejeitar manualmente, sem expiração automática.
 # ============================================================
 
 @app.route(
@@ -1265,9 +1011,11 @@ def pagamento_confirmado():
 
     expirar_compras()
 
+
     dados = request.get_json() or {}
 
     token = dados.get("token")
+
 
     if not token:
 
@@ -1277,92 +1025,132 @@ def pagamento_confirmado():
                 "Token da compra não enviado."
         }), 400
 
+
     conexao = conectar()
 
     cursor = conexao.cursor()
 
+
+    compra = cursor.execute("""
+        SELECT
+            id,
+            numeros,
+            status
+        FROM compras
+        WHERE token = ?
+    """, (token,)).fetchone()
+
+
+    if compra is None:
+
+        conexao.close()
+
+        return jsonify({
+            "sucesso": False,
+            "erro":
+                "Compra não encontrada."
+        }), 404
+
+
+    if compra["status"] == "expirada":
+
+        conexao.close()
+
+        return jsonify({
+            "sucesso": False,
+            "erro":
+                "O prazo desta compra expirou. "
+                "Os números foram liberados."
+        }), 410
+
+
+    if compra["status"] == "confirmada":
+
+        conexao.close()
+
+        return jsonify({
+            "sucesso": False,
+            "erro":
+                "Esta compra já foi confirmada."
+        }), 409
+
+
     try:
-
-        compra = cursor.execute("""
-            SELECT
-                id,
-                numeros,
-                status
-            FROM compras
-            WHERE token = ?
-        """, (token,)).fetchone()
-
-        if compra is None:
-
-            return jsonify({
-                "sucesso": False,
-                "erro":
-                    "Compra não encontrada."
-            }), 404
-
-        if compra["status"] == "expirada":
-
-            return jsonify({
-                "sucesso": False,
-                "erro":
-                    "O prazo desta compra expirou. "
-                    "Os números foram liberados."
-            }), 410
-
-        if compra["status"] == "cancelada":
-
-            return jsonify({
-                "sucesso": False,
-                "erro":
-                    "Esta compra foi cancelada."
-            }), 409
-
-        if compra["status"] == "confirmada":
-
-            return jsonify({
-                "sucesso": False,
-                "erro":
-                    "Esta compra já foi confirmada."
-            }), 409
-
-        if compra["status"] == "comprovante_enviado":
-
-            return jsonify({
-                "sucesso": True,
-                "mensagem":
-                    "O pagamento já foi marcado como realizado.",
-                "expira_em": None
-            })
 
         confirmado_em = agora()
 
-        # ====================================================
-        # REMOVER PRAZO
-        # ====================================================
+        # A partir daqui não há mais prazo/expiração automática:
+        # expira_em fica NULL e expirar_compras() já ignora
+        # qualquer compra com expira_em NULL (ver WHERE ... AND
+        # expira_em IS NOT NULL), então ela só sai do estado
+        # "comprovante_enviado" quando o admin confirmar ou
+        # rejeitar manualmente.
 
         cursor.execute("""
             UPDATE compras
 
             SET
-                status = 'comprovante_enviado',
 
-                comprovante_enviado_em = ?,
+                status =
+                    'comprovante_enviado',
 
-                expira_em = NULL
+                comprovante_enviado_em =
+                    ?,
+
+                expira_em =
+                    NULL
 
             WHERE token = ?
         """, (
             confirmado_em.strftime(
                 "%Y-%m-%d %H:%M:%S"
             ),
+
             token
         ))
 
+
         conexao.commit()
+
+        conexao.close()
+
+
+        try:
+            numeros_da_compra = json.loads(compra["numeros"])
+            numeros_texto = ", ".join(
+                str(numero).zfill(3) for numero in numeros_da_compra
+            )
+        except Exception:
+            numeros_texto = "?"
+
+        enviar_email_notificacao(
+            "💰 Pagamento marcado como realizado",
+            "Alguém marcou o pagamento como realizado e foi "
+            "redirecionado para o WhatsApp para enviar o "
+            "comprovante. Confira lá e confirme manualmente no "
+            "painel do admin quando quiser.\n\n"
+            f"Código da compra: {token}\n"
+            f"Números: {numeros_texto}"
+        )
+
+
+        return jsonify({
+
+            "sucesso": True,
+
+            "mensagem":
+                "Pagamento marcado como realizado.",
+
+            "expira_em":
+                None
+
+        })
+
 
     except Exception as erro:
 
         conexao.rollback()
+        conexao.close()
 
         print(
             "Erro ao marcar pagamento como realizado:",
@@ -1372,57 +1160,12 @@ def pagamento_confirmado():
         return jsonify({
             "sucesso": False,
             "erro":
-                "Não foi possível registrar "
-                "a confirmação."
+                "Não foi possível registrar a confirmação."
         }), 500
-
-    finally:
-
-        conexao.close()
-
-    try:
-
-        numeros_da_compra = json.loads(
-            compra["numeros"]
-        )
-
-        numeros_texto = ", ".join(
-            str(numero).zfill(3)
-            for numero in numeros_da_compra
-        )
-
-    except Exception:
-
-        numeros_texto = "?"
-
-    enviar_email_notificacao(
-        "💰 Pagamento marcado como realizado",
-        "Alguém marcou o pagamento como realizado "
-        "e foi redirecionado para o WhatsApp para "
-        "enviar o comprovante.\n\n"
-        f"Código da compra: {token}\n"
-        f"Números: {numeros_texto}\n\n"
-        "A compra agora aguarda confirmação manual "
-        "do administrador."
-    )
-
-    return jsonify({
-
-        "sucesso": True,
-
-        "mensagem":
-            "Pagamento marcado como realizado.",
-
-        # IMPORTANTE:
-        # não existe mais prazo nessa etapa.
-        "expira_em":
-            None
-
-    })
 
 
 # ============================================================
-# LIBERAR / CANCELAR COMPRA
+# LIBERAR COMPRA
 # ============================================================
 
 @app.route(
@@ -1433,7 +1176,9 @@ def liberar_numeros():
 
     expirar_compras()
 
+
     dados = request.get_json()
+
 
     if not dados:
 
@@ -1442,16 +1187,21 @@ def liberar_numeros():
             "erro": "Dados não enviados."
         }), 400
 
-    token = dados.get("token")
+
+    token = dados.get(
+        "token"
+    )
+
 
     numeros = dados.get(
         "numeros",
         []
     )
 
-    # ========================================================
-    # USANDO TOKEN
-    # ========================================================
+
+    # --------------------------------------------------------
+    # SE TIVER TOKEN, USAR A COMPRA
+    # --------------------------------------------------------
 
     if token:
 
@@ -1459,104 +1209,92 @@ def liberar_numeros():
 
         cursor = conexao.cursor()
 
-        try:
 
-            compra = cursor.execute("""
-                SELECT
-                    id,
-                    numeros,
-                    status
-                FROM compras
-                WHERE token = ?
-            """, (token,)).fetchone()
+        compra = cursor.execute("""
+            SELECT
+                id,
+                numeros,
+                status
+            FROM compras
+            WHERE token = ?
+        """, (token,)).fetchone()
 
-            if compra is None:
 
-                return jsonify({
-                    "sucesso": False,
-                    "erro":
-                        "Compra não encontrada."
-                }), 404
+        if compra is None:
 
-            if compra["status"] == "confirmada":
-
-                return jsonify({
-                    "sucesso": False,
-                    "erro":
-                        "Esta compra já foi confirmada "
-                        "e não pode ser cancelada."
-                }), 409
-
-            try:
-
-                numeros_compra = json.loads(
-                    compra["numeros"]
-                )
-
-            except Exception:
-
-                numeros_compra = []
-
-            # =================================================
-            # LIBERAR APENAS NÚMEROS PENDENTES
-            # =================================================
-
-            for numero in numeros_compra:
-
-                cursor.execute("""
-                    UPDATE numeros
-
-                    SET status = 'disponivel'
-
-                    WHERE numero = ?
-
-                    AND status = 'pendente'
-                """, (numero,))
-
-            cursor.execute("""
-                UPDATE compras
-
-                SET status = 'cancelada'
-
-                WHERE id = ?
-            """, (compra["id"],))
-
-            conexao.commit()
+            conexao.close()
 
             return jsonify({
+                "sucesso": False,
+                "erro": "Compra não encontrada."
+            }), 404
 
-                "sucesso": True,
 
-                "mensagem":
-                    "Compra cancelada e números liberados.",
+        if compra["status"] == "confirmada":
 
-                "liberados":
-                    numeros_compra
-
-            })
-
-        except Exception as erro:
-
-            conexao.rollback()
-
-            print(
-                "Erro ao liberar compra:",
-                erro
-            )
+            conexao.close()
 
             return jsonify({
                 "sucesso": False,
                 "erro":
-                    "Erro interno ao cancelar a compra."
-            }), 500
+                    "Esta compra já foi confirmada e não pode ser cancelada."
+            }), 409
 
-        finally:
 
-            conexao.close()
+        try:
 
-    # ========================================================
-    # COMPATIBILIDADE ANTIGA
-    # ========================================================
+            numeros = json.loads(
+                compra["numeros"]
+            )
+
+        except Exception:
+
+            numeros = []
+
+
+        for numero in numeros:
+
+            cursor.execute("""
+                UPDATE numeros
+
+                SET status = 'disponivel'
+
+                WHERE numero = ?
+
+                AND status = 'pendente'
+            """, (numero,))
+
+
+        cursor.execute("""
+            UPDATE compras
+
+            SET status = 'cancelada'
+
+            WHERE id = ?
+        """, (compra["id"],))
+
+
+        conexao.commit()
+
+        conexao.close()
+
+
+        return jsonify({
+
+            "sucesso": True,
+
+            "mensagem":
+                "Compra cancelada e números liberados.",
+
+            "liberados":
+                numeros
+
+        })
+
+
+    # --------------------------------------------------------
+    # COMPATIBILIDADE COM O SISTEMA ANTIGO
+    # --------------------------------------------------------
 
     if not numeros:
 
@@ -1564,6 +1302,7 @@ def liberar_numeros():
             "sucesso": False,
             "erro": "Nenhum número enviado."
         }), 400
+
 
     try:
 
@@ -1579,88 +1318,80 @@ def liberar_numeros():
             "erro": "Lista de números inválida."
         }), 400
 
+
     conexao = conectar()
 
     cursor = conexao.cursor()
 
+
     liberados = []
+
     nao_liberados = []
 
-    try:
 
-        for numero in numeros:
+    for numero in numeros:
 
-            resultado = cursor.execute("""
-                SELECT
-                    numero,
-                    status
-                FROM numeros
+        resultado = cursor.execute("""
+            SELECT
+                numero,
+                status
+            FROM numeros
+            WHERE numero = ?
+        """, (numero,)).fetchone()
+
+
+        if resultado is None:
+
+            nao_liberados.append({
+                "numero": numero,
+                "motivo":
+                    "Número não existe."
+            })
+
+            continue
+
+
+        if resultado["status"] == "pendente":
+
+            cursor.execute("""
+                UPDATE numeros
+
+                SET status = 'disponivel'
+
                 WHERE numero = ?
-            """, (numero,)).fetchone()
 
-            if resultado is None:
+                AND status = 'pendente'
+            """, (numero,))
 
-                nao_liberados.append({
-                    "numero": numero,
-                    "motivo":
-                        "Número não existe."
-                })
 
-                continue
+            if cursor.rowcount == 1:
 
-            if resultado["status"] == "pendente":
-
-                cursor.execute("""
-                    UPDATE numeros
-
-                    SET status = 'disponivel'
-
-                    WHERE numero = ?
-
-                    AND status = 'pendente'
-                """, (numero,))
-
-                if cursor.rowcount == 1:
-
-                    liberados.append(numero)
-
-                else:
-
-                    nao_liberados.append({
-                        "numero": numero,
-                        "motivo":
-                            "Não foi possível liberar."
-                    })
+                liberados.append(
+                    numero
+                )
 
             else:
 
                 nao_liberados.append({
                     "numero": numero,
                     "motivo":
-                        f"Status atual: "
-                        f"{resultado['status']}"
+                        "Não foi possível liberar."
                 })
 
-        conexao.commit()
 
-    except Exception as erro:
+        else:
 
-        conexao.rollback()
+            nao_liberados.append({
+                "numero": numero,
+                "motivo":
+                    f"Status atual: {resultado['status']}"
+            })
 
-        print(
-            "Erro ao liberar números:",
-            erro
-        )
 
-        return jsonify({
-            "sucesso": False,
-            "erro":
-                "Erro interno ao liberar números."
-        }), 500
+    conexao.commit()
 
-    finally:
+    conexao.close()
 
-        conexao.close()
 
     return jsonify({
 
@@ -1676,7 +1407,7 @@ def liberar_numeros():
 
 
 # ============================================================
-# LOGIN ADMIN
+# LOGIN / LOGOUT DO ADMIN
 # ============================================================
 
 @app.route(
@@ -1687,99 +1418,44 @@ def login_admin():
 
     dados = request.get_json() or {}
 
-    usuario = str(
-        dados.get(
-            "usuario",
-            ""
-        )
-    ).strip()
+    usuario = str(dados.get("usuario", "")).strip()
+    senha = str(dados.get("senha", "")).strip()
 
-    senha = str(
-        dados.get(
-            "senha",
-            ""
-        )
-    ).strip()
+    senha_correta = ADMIN_USUARIOS.get(usuario)
 
-    senha_correta = ADMIN_USUARIOS.get(
-        usuario
-    )
+    if senha_correta is None or senha != senha_correta:
 
-    if (
-        senha_correta is None
-        or senha != senha_correta
-    ):
-
-        if senha_correta is None:
-
-            motivo = (
-                "usuário não está na lista "
-                "de cadastrados"
-            )
-
-        else:
-
-            motivo = (
-                "usuário OK, senha não bate "
-                "(comprimento diferente ou conteúdo "
-                "incorreto)"
-            )
-
+        # Log de diagnóstico (aparece nos "Logs" do Render). Nunca
+        # imprime a senha digitada nem a senha certa — só ajuda a
+        # confirmar se o usuário digitado bate com algum dos
+        # cadastrados nas variáveis de ambiente.
         print(
-            "[login admin] Tentativa falhou. "
-            "Usuário recebido: "
+            "[login admin] Tentativa falhou. Usuário recebido: "
             + repr(usuario)
-            + " | Motivo: "
-            + motivo
-            + " | Usuários cadastrados: "
-            + repr(
-                list(
-                    ADMIN_USUARIOS.keys()
-                )
-            )
+            + " | Usuários cadastrados no momento: "
+            + repr(list(ADMIN_USUARIOS.keys()))
         )
 
         return jsonify({
             "sucesso": False,
-            "erro":
-                "Usuário ou senha incorretos."
+            "erro": "Usuário ou senha incorretos."
         }), 401
 
     token_sessao = secrets.token_hex(32)
 
     with SESSOES_LOCK:
 
-        SESSOES_ADMIN[
-            token_sessao
-        ] = {
-
-            "usuario":
-                usuario,
-
-            "expira_em":
-                datetime.now()
-                + timedelta(
-                    hours=DURACAO_SESSAO_HORAS
-                )
-
+        SESSOES_ADMIN[token_sessao] = {
+            "usuario": usuario,
+            "expira_em": datetime.now() + timedelta(hours=DURACAO_SESSAO_HORAS)
         }
 
     return jsonify({
-
         "sucesso": True,
-
-        "token":
-            token_sessao,
-
-        "usuario":
-            usuario
-
+        "token": token_sessao,
+        "usuario": usuario
     })
 
-
-# ============================================================
-# LOGOUT ADMIN
-# ============================================================
 
 @app.route(
     "/api/admin/logout",
@@ -1789,24 +1465,16 @@ def logout_admin():
 
     dados = request.get_json() or {}
 
-    token_sessao = dados.get(
-        "token"
-    )
+    token_sessao = dados.get("token")
 
     with SESSOES_LOCK:
+        SESSOES_ADMIN.pop(token_sessao, None)
 
-        SESSOES_ADMIN.pop(
-            token_sessao,
-            None
-        )
-
-    return jsonify({
-        "sucesso": True
-    })
+    return jsonify({"sucesso": True})
 
 
 # ============================================================
-# ADMIN - ALTERAR STATUS DE NÚMERO
+# ADMIN - ALTERAR STATUS
 # ============================================================
 
 @app.route(
@@ -1818,6 +1486,7 @@ def alterar_status(numero):
 
     dados = request.get_json()
 
+
     if not dados:
 
         return jsonify({
@@ -1825,15 +1494,18 @@ def alterar_status(numero):
             "erro": "Dados não enviados."
         }), 400
 
+
     novo_status = dados.get(
         "status"
     )
+
 
     status_permitidos = [
         "disponivel",
         "pendente",
         "indisponivel"
     ]
+
 
     if novo_status not in status_permitidos:
 
@@ -1842,58 +1514,46 @@ def alterar_status(numero):
             "erro": "Status inválido."
         }), 400
 
+
     conexao = conectar()
 
     cursor = conexao.cursor()
 
-    try:
 
-        resultado = cursor.execute("""
-            SELECT
-                numero
-            FROM numeros
-            WHERE numero = ?
-        """, (numero,)).fetchone()
-
-        if resultado is None:
-
-            return jsonify({
-                "sucesso": False,
-                "erro":
-                    "Número não encontrado."
-            }), 404
-
-        cursor.execute("""
-            UPDATE numeros
-
-            SET status = ?
-
-            WHERE numero = ?
-        """, (
-            novo_status,
+    resultado = cursor.execute("""
+        SELECT
             numero
-        ))
+        FROM numeros
+        WHERE numero = ?
+    """, (numero,)).fetchone()
 
-        conexao.commit()
 
-    except Exception as erro:
+    if resultado is None:
 
-        conexao.rollback()
-
-        print(
-            "Erro ao alterar status:",
-            erro
-        )
+        conexao.close()
 
         return jsonify({
             "sucesso": False,
-            "erro":
-                "Erro interno ao alterar o status."
-        }), 500
+            "erro": "Número não encontrado."
+        }), 404
 
-    finally:
 
-        conexao.close()
+    cursor.execute("""
+        UPDATE numeros
+
+        SET status = ?
+
+        WHERE numero = ?
+    """, (
+        novo_status,
+        numero
+    ))
+
+
+    conexao.commit()
+
+    conexao.close()
+
 
     return jsonify({
 
@@ -1921,30 +1581,34 @@ def admin_compras():
 
     expirar_compras()
 
+
     conexao = conectar()
 
-    try:
 
-        compras = conexao.execute("""
-            SELECT
-                id,
-                token,
-                numeros,
-                status,
-                criado_em,
-                comprovante,
-                comprovante_enviado_em,
-                expira_em,
-                confirmado_em
-            FROM compras
-            ORDER BY id DESC
-        """).fetchall()
+    compras = conexao.execute("""
+        SELECT
 
-    finally:
+            id,
+            token,
+            numeros,
+            status,
+            criado_em,
+            comprovante,
+            comprovante_enviado_em,
+            expira_em,
+            confirmado_em
 
-        conexao.close()
+        FROM compras
+
+        ORDER BY id DESC
+    """).fetchall()
+
+
+    conexao.close()
+
 
     resultado = []
+
 
     for compra in compras:
 
@@ -1957,6 +1621,7 @@ def admin_compras():
         except Exception:
 
             numeros = []
+
 
         resultado.append({
 
@@ -1973,29 +1638,22 @@ def admin_compras():
                 compra["status"],
 
             "criado_em":
-                data_para_json(
-                    compra["criado_em"]
-                ),
+                data_para_json(compra["criado_em"]),
 
             "comprovante":
                 compra["comprovante"],
 
             "comprovante_enviado_em":
-                data_para_json(
-                    compra["comprovante_enviado_em"]
-                ),
+                data_para_json(compra["comprovante_enviado_em"]),
 
             "expira_em":
-                data_para_json(
-                    compra["expira_em"]
-                ),
+                data_para_json(compra["expira_em"]),
 
             "confirmado_em":
-                data_para_json(
-                    compra["confirmado_em"]
-                )
+                data_para_json(compra["confirmado_em"])
 
         })
+
 
     return jsonify({
 
@@ -2020,117 +1678,117 @@ def confirmar_compra(token):
 
     expirar_compras()
 
+
     conexao = conectar()
 
     cursor = conexao.cursor()
 
-    try:
 
-        compra = cursor.execute("""
-            SELECT
-                id,
-                numeros,
-                status
-            FROM compras
-            WHERE token = ?
-        """, (token,)).fetchone()
+    compra = cursor.execute("""
+        SELECT
+            id,
+            numeros,
+            status
+        FROM compras
+        WHERE token = ?
+    """, (token,)).fetchone()
 
-        if compra is None:
 
-            return jsonify({
-                "sucesso": False,
-                "erro":
-                    "Compra não encontrada."
-            }), 404
+    if compra is None:
 
-        if compra["status"] == "expirada":
+        conexao.close()
 
-            return jsonify({
-                "sucesso": False,
-                "erro":
-                    "Esta compra já expirou."
-            }), 409
+        return jsonify({
+            "sucesso": False,
+            "erro": "Compra não encontrada."
+        }), 404
 
-        if compra["status"] == "cancelada":
 
-            return jsonify({
-                "sucesso": False,
-                "erro":
-                    "Esta compra foi cancelada."
-            }), 409
+    if compra["status"] == "expirada":
 
-        if compra["status"] == "confirmada":
-
-            return jsonify({
-                "sucesso": True,
-                "mensagem":
-                    "Compra já estava confirmada."
-            })
-
-        try:
-
-            numeros = json.loads(
-                compra["numeros"]
-            )
-
-        except Exception:
-
-            numeros = []
-
-        # ====================================================
-        # MARCAR NÚMEROS COMO INDISPONÍVEIS
-        # ====================================================
-
-        for numero in numeros:
-
-            cursor.execute("""
-                UPDATE numeros
-
-                SET status = 'indisponivel'
-
-                WHERE numero = ?
-
-                AND status = 'pendente'
-            """, (numero,))
-
-        # ====================================================
-        # CONFIRMAR
-        # ====================================================
-
-        cursor.execute("""
-            UPDATE compras
-
-            SET
-                status = 'confirmada',
-
-                confirmado_em = ?
-
-            WHERE token = ?
-        """, (
-            agora_texto(),
-            token
-        ))
-
-        conexao.commit()
-
-    except Exception as erro:
-
-        conexao.rollback()
-
-        print(
-            "Erro ao confirmar compra:",
-            erro
-        )
+        conexao.close()
 
         return jsonify({
             "sucesso": False,
             "erro":
-                "Erro interno ao confirmar a compra."
-        }), 500
+                "Esta compra já expirou."
+        }), 409
 
-    finally:
+
+    if compra["status"] == "cancelada":
 
         conexao.close()
+
+        return jsonify({
+            "sucesso": False,
+            "erro":
+                "Esta compra foi cancelada."
+        }), 409
+
+
+    if compra["status"] == "confirmada":
+
+        conexao.close()
+
+        return jsonify({
+            "sucesso": True,
+            "mensagem":
+                "Compra já estava confirmada."
+        })
+
+
+    try:
+
+        numeros = json.loads(
+            compra["numeros"]
+        )
+
+    except Exception:
+
+        numeros = []
+
+
+    # --------------------------------------------------------
+    # MARCAR OS NÚMEROS COMO INDISPONÍVEIS
+    # --------------------------------------------------------
+
+    for numero in numeros:
+
+        cursor.execute("""
+            UPDATE numeros
+
+            SET status = 'indisponivel'
+
+            WHERE numero = ?
+
+            AND status = 'pendente'
+        """, (numero,))
+
+
+    # --------------------------------------------------------
+    # CONFIRMAR COMPRA
+    # --------------------------------------------------------
+
+    cursor.execute("""
+        UPDATE compras
+
+        SET
+
+            status = 'confirmada',
+
+            confirmado_em = ?
+
+        WHERE token = ?
+    """, (
+        agora_texto(),
+        token
+    ))
+
+
+    conexao.commit()
+
+    conexao.close()
+
 
     return jsonify({
 
@@ -2146,7 +1804,7 @@ def confirmar_compra(token):
 
 
 # ============================================================
-# ADMIN - REJEITAR COMPRA
+# ADMIN - REJEITAR / CANCELAR COMPRA
 # ============================================================
 
 @app.route(
@@ -2158,96 +1816,88 @@ def rejeitar_compra(token):
 
     expirar_compras()
 
+
     conexao = conectar()
 
     cursor = conexao.cursor()
 
-    try:
 
-        compra = cursor.execute("""
-            SELECT
-                id,
-                numeros,
-                status
-            FROM compras
-            WHERE token = ?
-        """, (token,)).fetchone()
+    compra = cursor.execute("""
+        SELECT
+            id,
+            numeros,
+            status
+        FROM compras
+        WHERE token = ?
+    """, (token,)).fetchone()
 
-        if compra is None:
 
-            return jsonify({
-                "sucesso": False,
-                "erro":
-                    "Compra não encontrada."
-            }), 404
+    if compra is None:
 
-        if compra["status"] == "confirmada":
+        conexao.close()
 
-            return jsonify({
-                "sucesso": False,
-                "erro":
-                    "Uma compra confirmada não "
-                    "pode ser rejeitada."
-            }), 409
+        return jsonify({
+            "sucesso": False,
+            "erro": "Compra não encontrada."
+        }), 404
 
-        try:
 
-            numeros = json.loads(
-                compra["numeros"]
-            )
+    if compra["status"] == "confirmada":
 
-        except Exception:
-
-            numeros = []
-
-        # ====================================================
-        # LIBERAR NÚMEROS
-        # ====================================================
-
-        for numero in numeros:
-
-            cursor.execute("""
-                UPDATE numeros
-
-                SET status = 'disponivel'
-
-                WHERE numero = ?
-
-                AND status = 'pendente'
-            """, (numero,))
-
-        # ====================================================
-        # CANCELAR COMPRA
-        # ====================================================
-
-        cursor.execute("""
-            UPDATE compras
-
-            SET status = 'cancelada'
-
-            WHERE token = ?
-        """, (token,))
-
-        conexao.commit()
-
-    except Exception as erro:
-
-        conexao.rollback()
-
-        print(
-            "Erro ao rejeitar compra:",
-            erro
-        )
+        conexao.close()
 
         return jsonify({
             "sucesso": False,
             "erro":
-                "Erro interno ao rejeitar a compra."
-        }), 500
+                "Uma compra confirmada não pode ser rejeitada."
+        }), 409
 
-    finally:
 
-        conexao.close()
+    try:
+
+        numeros = json.loads(
+            compra["numeros"]
+        )
+
+    except Exception:
+
+        numeros = []
+
+
+    # --------------------------------------------------------
+    # LIBERAR NÚMEROS
+    # --------------------------------------------------------
+
+    for numero in numeros:
+
+        cursor.execute("""
+            UPDATE numeros
+
+            SET status = 'disponivel'
+
+            WHERE numero = ?
+
+            AND status = 'pendente'
+        """, (numero,))
+
+
+    # --------------------------------------------------------
+    # CANCELAR COMPRA
+    # --------------------------------------------------------
+
+    cursor.execute("""
+        UPDATE compras
+
+        SET status = 'cancelada'
+
+        WHERE token = ?
+    """, (token,))
+
+
+    conexao.commit()
+
+    conexao.close()
+
 
     return jsonify({
 
@@ -2275,29 +1925,34 @@ def estatisticas():
 
     expirar_compras()
 
+
     conexao = conectar()
 
-    try:
 
-        resultado = conexao.execute("""
-            SELECT
-                status,
-                COUNT(*) AS quantidade
-            FROM numeros
-            GROUP BY status
-        """).fetchall()
+    resultado = conexao.execute("""
+        SELECT
+            status,
+            COUNT(*) AS quantidade
 
-        compras = conexao.execute("""
-            SELECT
-                status,
-                COUNT(*) AS quantidade
-            FROM compras
-            GROUP BY status
-        """).fetchall()
+        FROM numeros
 
-    finally:
+        GROUP BY status
+    """).fetchall()
 
-        conexao.close()
+
+    compras = conexao.execute("""
+        SELECT
+            status,
+            COUNT(*) AS quantidade
+
+        FROM compras
+
+        GROUP BY status
+    """).fetchall()
+
+
+    conexao.close()
+
 
     estatisticas_numeros = {
 
@@ -2312,13 +1967,13 @@ def estatisticas():
 
     }
 
+
     for linha in resultado:
 
         status = linha["status"]
 
-        quantidade = int(
-            linha["quantidade"]
-        )
+        quantidade = linha["quantidade"]
+
 
         if status == "disponivel":
 
@@ -2326,11 +1981,13 @@ def estatisticas():
                 "disponiveis"
             ] = quantidade
 
+
         elif status == "pendente":
 
             estatisticas_numeros[
                 "pendentes"
             ] = quantidade
+
 
         elif status == "indisponivel":
 
@@ -2338,22 +1995,22 @@ def estatisticas():
                 "indisponiveis"
             ] = quantidade
 
+
     estatisticas_compras = {}
+
 
     for linha in compras:
 
         estatisticas_compras[
             linha["status"]
-        ] = int(
-            linha["quantidade"]
-        )
+        ] = linha["quantidade"]
+
 
     total_arrecadado = (
-        estatisticas_numeros[
-            "indisponiveis"
-        ]
-        * PRECO_NUMERO
+        estatisticas_numeros["indisponiveis"] *
+        PRECO_NUMERO
     )
+
 
     return jsonify({
 
@@ -2370,7 +2027,7 @@ def estatisticas():
 
 
 # ============================================================
-# ERRO 413
+# ERRO DE ARQUIVO GRANDE
 # ============================================================
 
 @app.errorhandler(413)
@@ -2388,16 +2045,11 @@ def arquivo_muito_grande(erro):
 
 
 # ============================================================
-# ERRO 500
+# ERROS GERAIS
 # ============================================================
 
 @app.errorhandler(500)
 def erro_servidor(erro):
-
-    print(
-        "Erro 500:",
-        erro
-    )
 
     return jsonify({
 
@@ -2410,68 +2062,40 @@ def erro_servidor(erro):
 
 
 # ============================================================
-# INICIALIZAÇÃO
+# INICIALIZAÇÃO (roda tanto com "python app.py" quanto com
+# gunicorn/produção, já que nesse segundo caso o bloco
+# "if __name__ == '__main__'" abaixo nunca é executado)
 # ============================================================
 
-try:
-
-    criar_banco()
-
-except Exception as erro:
-
-    print(
-        "ERRO AO CRIAR/ABRIR O BANCO:",
-        erro
-    )
-
-    raise
+criar_banco()
 
 
-# ============================================================
-# THREAD DE EXPIRAÇÃO
-# ============================================================
+# --------------------------------------------------------
+# INICIAR VERIFICADOR AUTOMÁTICO DE EXPIRAÇÃO
+# --------------------------------------------------------
+# O Flask debug (quando ligado) cria um processo principal e um
+# processo "reloader". Para não duplicar a thread nesse caso:
 
 if (
-    os.environ.get(
-        "WERKZEUG_RUN_MAIN"
-    ) == "true"
-
-    or
-
-    os.environ.get(
-        "FLASK_DEBUG",
-        "0"
-    ) != "1"
+    os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+    or os.environ.get("FLASK_DEBUG", "0") != "1"
 ):
 
     iniciar_expiracao_automatica()
 
 
 # ============================================================
-# SERVIDOR
+# INICIAR SERVIDOR (só quando executado diretamente, ex:
+# "python app.py" — em produção quem inicia é o gunicorn,
+# conforme o Procfile)
 # ============================================================
 
 if __name__ == "__main__":
 
     print()
-    print(
-        "===================================="
-    )
-    print(
-        "       SERVIDOR DA RIFA"
-    )
-    print(
-        "===================================="
-    )
-    print()
-
-    print(
-        "Banco:",
-        "PostgreSQL"
-        if USANDO_POSTGRES
-        else "SQLite"
-    )
-
+    print("====================================")
+    print("       SERVIDOR DA RIFA")
+    print("====================================")
     print()
 
     print(
@@ -2480,58 +2104,37 @@ if __name__ == "__main__":
 
     print()
 
-    print(
-        "Endpoints:"
-    )
-
+    print("Endpoints:")
     print(
         "GET  /api/numeros"
     )
-
     print(
         "GET  /api/numeros/<numero>"
     )
-
     print(
         "POST /api/reservar"
     )
-
     print(
         "GET  /api/compras/<token>"
     )
-
     print(
         "POST /api/pagamento-confirmado"
     )
-
     print(
         "POST /api/liberar"
     )
-
-    print(
-        "POST /api/admin/login"
-    )
-
-    print(
-        "POST /api/admin/logout"
-    )
-
     print(
         "PUT  /api/admin/numeros/<numero>"
     )
-
     print(
         "GET  /api/admin/compras"
     )
-
     print(
         "PUT  /api/admin/compras/<token>/confirmar"
     )
-
     print(
         "PUT  /api/admin/compras/<token>/rejeitar"
     )
-
     print(
         "GET  /api/admin/estatisticas"
     )
@@ -2539,31 +2142,36 @@ if __name__ == "__main__":
     print()
 
     print(
-        "Prazo inicial: 24 horas"
+        "Upload máximo: 10 MB"
     )
 
     print(
-        "Após 'Já realizei o pagamento': sem expiração automática"
+        "Formatos: JPG, JPEG, PNG, WEBP, PDF"
+    )
+
+    print(
+        "Expiração após comprovante: desativada (confirmação manual)"
     )
 
     print()
 
+
     porta = int(
-        os.environ.get(
-            "PORT",
-            5000
-        )
+        os.environ.get("PORT", 5000)
     )
+
 
     modo_debug = (
-        os.environ.get(
-            "FLASK_DEBUG",
-            "0"
-        ) == "1"
+        os.environ.get("FLASK_DEBUG", "0") == "1"
     )
 
+
     app.run(
+
         host="0.0.0.0",
+
         port=porta,
+
         debug=modo_debug
+
     )
