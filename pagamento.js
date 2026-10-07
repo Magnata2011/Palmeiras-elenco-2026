@@ -36,7 +36,7 @@ const voltarSelecionar = document.getElementById("voltarSelecionar");
 const pagamentoRealizado = document.getElementById("pagamentoRealizado");
 
 const areaRedirecionamento = document.getElementById("areaRedirecionamento");
-const linkPagamentoWhatsapp = document.getElementById("linkPagamentoWhatsapp");
+const linkFormulario = document.getElementById("linkFormulario");
 const textoRedirecionamento = document.getElementById("textoRedirecionamento");
 
 const qrDuvidasWhatsapp = document.getElementById("qrDuvidasWhatsapp");
@@ -114,7 +114,7 @@ function converterData(texto) {
 // =====================================
 // Antes, quem usava o botão voltar do navegador (em vez do botão
 // da própria página) saía sem cancelar a reserva: os números
-// ficavam presos como "pendente" por até 24 horas e a pessoa
+// ficavam presos como "pendente" por até 5 minutos e a pessoa
 // via os próprios números travados no index, sem entender o motivo.
 //
 // Agora: criamos uma "trava" no histórico do navegador. Se a
@@ -278,7 +278,7 @@ async function carregarCompra() {
         }
 
         // Ainda pendente de pagamento: mantém a proteção de saída
-        // e liga o cronômetro de 24 horas.
+        // e liga o cronômetro de 5 minutos.
         iniciarTimer(compra.expira_em);
 
     } catch (erro) {
@@ -374,7 +374,7 @@ function iniciarTimer(dataExpiracao) {
 
         if (diferenca <= 0) {
 
-            timerElemento.textContent = "00:00:00";
+            timerElemento.textContent = "00:00";
             pararTimer();
             podeSairLivremente = true;
             bloquearPorExpiracao();
@@ -383,17 +383,15 @@ function iniciarTimer(dataExpiracao) {
         }
 
         const totalSegundos = Math.floor(diferenca / 1000);
-        const horas = Math.floor(totalSegundos / 3600);
-        const minutos = Math.floor((totalSegundos % 3600) / 60);
+        const minutos = Math.floor(totalSegundos / 60);
         const segundos = totalSegundos % 60;
 
         timerElemento.textContent =
-            String(horas).padStart(2, "0") + ":" +
             String(minutos).padStart(2, "0") + ":" +
             String(segundos).padStart(2, "0");
 
-        // Aviso visual quando faltarem menos de 5 minutos
-        if (totalSegundos <= 300) {
+        // Aviso visual quando faltar menos de 1 minuto
+        if (totalSegundos <= 60) {
             timerElemento.classList.add("timer-urgente");
         }
 
@@ -486,9 +484,9 @@ copiarPix.addEventListener("click", async () => {
 // =====================================
 // A pessoa não envia mais comprovante pelo site: ao clicar aqui,
 // avisamos o backend que o pagamento foi marcado como realizado
-// (o que também estende o prazo para o admin conferir) e já
-// mandamos ela direto para o formulário do Google, onde o
-// comprovante de verdade é enviado.
+// (a partir daí a confirmação é manual, sem prazo) e já mandamos
+// ela direto para o WhatsApp, onde o comprovante de verdade é
+// enviado.
 // =====================================
 
 pagamentoRealizado.addEventListener("click", async () => {
@@ -552,37 +550,19 @@ pagamentoRealizado.addEventListener("click", async () => {
 // =====================================
 // REDIRECIONAR PARA O WHATSAPP
 // =====================================
-// Em vez de mandar a pessoa pro formulário do Google, agora ela é
-// redirecionada direto pra uma conversa no WhatsApp já com a
-// mensagem pronta (código da compra, números, quantidade e valor)
-// — só falta ela anexar o comprovante e enviar.
-// =====================================
 
 function mostrarRedirecionamento(autoRedirecionar) {
 
     const quantidade = numeros.length;
 
-    const numerosTexto = numeros
-        .map(n => String(n).padStart(3, "0"))
-        .join(", ");
+    const url = montarLinkComprovanteWhatsapp({
+        token: token,
+        numeros: numeros.map(n => String(n).padStart(3, "0")).join(", "),
+        quantidade: quantidade,
+        valor: formatarValor(quantidade * PRECO)
+    });
 
-    // O WhatsApp usa UM asterisco (não dois) pra deixar o texto
-    // em negrito — por isso "*envie aqui o comprovante*" abaixo.
-
-    const mensagem =
-        "Olá! Realizei o pagamento da rifa do Palmeiras.\n\n" +
-        "Código da compra: " + token + "\n" +
-        "Números: " + numerosTexto + "\n" +
-        "Quantidade: " + quantidade +
-        (quantidade === 1 ? " número" : " números") + "\n" +
-        "Valor: " + formatarValor(quantidade * PRECO) + "\n\n" +
-        "*Envie aqui o comprovante* 📎";
-
-    const url =
-        "https://wa.me/" + RIFA_CONFIG.WHATSAPP +
-        "?text=" + encodeURIComponent(mensagem);
-
-    linkPagamentoWhatsapp.href = url;
+    linkFormulario.href = url;
 
     areaRedirecionamento.style.display = "block";
 
