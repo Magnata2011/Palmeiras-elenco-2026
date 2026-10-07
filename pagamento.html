@@ -93,7 +93,30 @@
         </section>
 
 
-      
+        <!-- =================================
+             TIMER
+             ================================= -->
+
+        <section class="timer-area">
+
+            <p>
+                Tempo restante para realizar o pagamento:
+            </p>
+
+            <div
+                id="timer"
+                class="timer">
+
+                05:00
+
+            </div>
+
+            <small id="mensagemTimer">
+                Sua reserva será liberada automaticamente
+                quando o tempo acabar.
+            </small>
+
+        </section>
 
 
         <!-- =================================
@@ -221,7 +244,7 @@
 
 
         <!-- =================================
-             REDIRECIONAMENTO PARA O WHATSAPP
+             REDIRECIONAMENTO PARA O FORMULÁRIO
              ================================= -->
 
         <section
@@ -230,7 +253,7 @@
             style="display: none;">
 
             <h2>
-                Quase lá!
+                Pagamento marcado como realizado!
             </h2>
 
             <p id="textoRedirecionamento">
@@ -240,10 +263,11 @@
             </p>
 
             <a
-                id="linkPagamentoWhatsapp"
+                id="linkFormulario"
                 class="botao-ir-formulario"
                 href="#"
-                target="_self">
+                target="_blank"
+                rel="noopener noreferrer">
 
                 Se não for redirecionado, clique aqui
 
