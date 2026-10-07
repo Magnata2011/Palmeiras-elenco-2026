@@ -27,7 +27,7 @@ const RIFA_CONFIG = {
         window.location.protocol === "file:"
     )
         ? "http://127.0.0.1:5000"
-        : "https://palmeiras-elenco-2026-1.onrender.com",
+        : "https://palmeiras-elenco-2026.onrender.com",
 
 
     // -----------------------------------------------------------
@@ -41,7 +41,17 @@ const RIFA_CONFIG = {
     // QUANTIDADE TOTAL DE NÚMEROS DA RIFA
     // -----------------------------------------------------------
 
-    TOTAL_NUMEROS: 999,
+    TOTAL_NUMEROS: 1000,
+
+
+    // -----------------------------------------------------------
+    // TEMPO PARA PAGAR (deve bater com MINUTOS do app.py)
+    // -----------------------------------------------------------
+    // Depois que a pessoa marca "já realizei o pagamento", não há
+    // mais prazo nenhum: a confirmação do admin passou a ser 100%
+    // manual, sem expiração automática.
+
+    MINUTOS_PARA_PAGAR: 5,
 
 
     // -----------------------------------------------------------
@@ -53,39 +63,6 @@ const RIFA_CONFIG = {
     WHATSAPP: "5511976656188",
 
     EMAIL: "seuemail@gmail.com",
-
-
-    // -----------------------------------------------------------
-    // FORMULÁRIO GOOGLE PARA ENVIO DO COMPROVANTE
-    // -----------------------------------------------------------
-    // Depois de subir o comprovante no site, a pessoa é redirecionada
-    // automaticamente para este formulário do Google (onde você recebe
-    // a confirmação/arquivo do jeito que configurar por lá).
-    //
-    // Como pegar o link: no Google Forms, clique em "Enviar" (Send) e
-    // copie o link do formulário.
-
-    GOOGLE_FORM_URL:
-        "https://forms.gle/dtfTPpmaCBLhngHw8",
-
-
-    // -----------------------------------------------------------
-    // PREENCHER O FORMULÁRIO AUTOMATICAMENTE (opcional)
-    // -----------------------------------------------------------
-    // Se quiser que o código da compra, os números, a quantidade e o
-    // valor já cheguem preenchidos no formulário, descubra o
-    // "entry.XXXXXXXXX" de cada pergunta (veja o README, seção
-    // "Descobrir o entry.XXXXX de uma pergunta do Google Forms") e
-    // cole abaixo. Pode deixar null nos campos que não quiser
-    // preencher automaticamente — o redirecionamento funciona do
-    // mesmo jeito.
-
-    GOOGLE_FORM_CAMPOS: {
-        token: null,        // ex: "entry.111111111"
-        numeros: null,      // ex: "entry.222222222"
-        quantidade: null,   // ex: "entry.333333333"
-        valor: null         // ex: "entry.444444444"
-    },
 
 
     // -----------------------------------------------------------
@@ -115,41 +92,30 @@ function formatarValor(valor) {
 
 
 // =====================================================================
-// MONTAR O LINK DO FORMULÁRIO GOOGLE (com preenchimento automático,
-// se configurado em GOOGLE_FORM_CAMPOS)
+// MONTAR O LINK DO WHATSAPP PARA ENVIO DO COMPROVANTE
 // =====================================================================
+// Em vez de ir para um formulário do Google, a pessoa é mandada
+// direto para uma conversa no WhatsApp (RIFA_CONFIG.WHATSAPP) já
+// com uma mensagem pronta, pedindo o comprovante. O WhatsApp usa
+// um único asterisco (*texto*) para deixar em negrito — por isso o
+// "envie aqui o comprovante" abaixo usa *um* asterisco de cada lado,
+// não dois.
 
-function montarLinkFormulario(dados) {
+function montarLinkComprovanteWhatsapp(dados) {
 
-    const base = RIFA_CONFIG.GOOGLE_FORM_URL;
-    const campos = RIFA_CONFIG.GOOGLE_FORM_CAMPOS || {};
+    const linhas = [
+        "Olá! Já realizei o pagamento da rifa do Palmeiras.",
+        "",
+        "Código da compra: " + (dados.token || "-"),
+        "Números: " + (dados.numeros || "-"),
+        "Quantidade: " + (dados.quantidade !== undefined ? dados.quantidade : "-"),
+        "Valor: " + (dados.valor || "-"),
+        "",
+        "*envie aqui o comprovante* 📎"
+    ];
 
-    const parametros = new URLSearchParams();
+    const mensagem = encodeURIComponent(linhas.join("\n"));
 
-    if (campos.token && dados.token) {
-        parametros.set(campos.token, dados.token);
-    }
-
-    if (campos.numeros && dados.numeros) {
-        parametros.set(campos.numeros, dados.numeros);
-    }
-
-    if (campos.quantidade && dados.quantidade !== undefined) {
-        parametros.set(campos.quantidade, String(dados.quantidade));
-    }
-
-    if (campos.valor && dados.valor) {
-        parametros.set(campos.valor, dados.valor);
-    }
-
-    const parametrosTexto = parametros.toString();
-
-    if (!parametrosTexto) {
-        return base;
-    }
-
-    const separador = base.includes("?") ? "&" : "?";
-
-    return base + separador + parametrosTexto;
+    return "https://wa.me/" + RIFA_CONFIG.WHATSAPP + "?text=" + mensagem;
 
 }
