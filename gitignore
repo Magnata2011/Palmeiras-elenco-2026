@@ -1,0 +1,4 @@
+rifa.db
+*.db
+__pycache__/
+*.pyc
