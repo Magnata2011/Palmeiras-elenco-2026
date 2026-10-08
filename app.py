@@ -3,6 +3,7 @@ from flask_cors import CORS
 
 import sqlite3
 import os
+import re
 import uuid
 import json
 import threading
@@ -232,7 +233,111 @@ def exigir_login_admin(funcao):
 # BANCO DE DADOS
 # ============================================================
 
+DATABASE_URL = (os.environ.get("DATABASE_URL") or "").strip()
+
+# O Render às vezes entrega "postgres://"; o psycopg2 aceita os dois,
+# mas padronizamos por segurança.
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = "postgresql://" + DATABASE_URL[len("postgres://"):]
+
+MODO_POSTGRES = bool(DATABASE_URL)
+
+if MODO_POSTGRES:
+    import psycopg2
+
+
+class _LinhaPG(tuple):
+    """Linha que aceita acesso por índice (linha[0]) e por nome
+    (linha["status"]), igual ao sqlite3.Row."""
+
+    def __new__(cls, valores, nomes):
+        obj = super().__new__(cls, valores)
+        obj._nomes = list(nomes)
+        return obj
+
+    def __getitem__(self, chave):
+        if isinstance(chave, str):
+            return tuple.__getitem__(self, self._nomes.index(chave))
+        return tuple.__getitem__(self, chave)
+
+    def keys(self):
+        return list(self._nomes)
+
+
+class _CursorPG:
+    """Traduz o SQL escrito para SQLite para o PostgreSQL."""
+
+    def __init__(self, cursor):
+        self._c = cursor
+        self.lastrowid = None
+
+    def execute(self, sql, params=()):
+        sql = sql.replace("%", "%%").replace("?", "%s")
+        sql = sql.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+
+        if re.search(r"INSERT\s+OR\s+IGNORE", sql, re.I):
+            sql = re.sub(r"INSERT\s+OR\s+IGNORE", "INSERT", sql, flags=re.I)
+            sql = sql.rstrip() + " ON CONFLICT DO NOTHING"
+
+        quer_id = bool(re.match(r"\s*INSERT\s+INTO\s+compras\b", sql, re.I))
+        if quer_id:
+            sql = sql.rstrip() + " RETURNING id"
+
+        self._c.execute(sql, tuple(params))
+
+        if quer_id:
+            self.lastrowid = self._c.fetchone()[0]
+
+        return self
+
+    def _linha(self, r):
+        if r is None:
+            return None
+        nomes = [d[0] for d in self._c.description]
+        return _LinhaPG(r, nomes)
+
+    def fetchone(self):
+        return self._linha(self._c.fetchone())
+
+    def fetchall(self):
+        return [self._linha(r) for r in self._c.fetchall()]
+
+    @property
+    def rowcount(self):
+        return self._c.rowcount
+
+    def close(self):
+        self._c.close()
+
+
+class _ConexaoPG:
+
+    def __init__(self, conexao):
+        self._conn = conexao
+
+    def cursor(self):
+        return _CursorPG(self._conn.cursor())
+
+    def execute(self, sql, params=()):
+        return self.cursor().execute(sql, params)
+
+    def commit(self):
+        self._conn.commit()
+
+    def rollback(self):
+        self._conn.rollback()
+
+    def close(self):
+        self._conn.close()
+
+
 def conectar():
+
+    if MODO_POSTGRES:
+
+        return _ConexaoPG(
+            psycopg2.connect(DATABASE_URL, connect_timeout=15)
+        )
 
     conexao = sqlite3.connect(
         DATABASE,
@@ -241,15 +346,8 @@ def conectar():
 
     conexao.row_factory = sqlite3.Row
 
-    # O modo WAL (que tentamos usar aqui antes para evitar o erro
-    # "database is locked") quebrou tudo no disco do Render com
-    # "sqlite3.OperationalError: disk I/O error" em toda consulta —
-    # o sistema de arquivos daqui não suporta bem a memória
-    # compartilhada que o WAL precisa. Voltando explicitamente para
-    # o modo padrão (DELETE): isso também converte de volta o banco
-    # que já tinha ficado "preso" em modo WAL, sem apagar nenhum
-    # dado. A proteção contra "database is locked" continua pelo
-    # lock em expirar_compras(), que não depende de WAL.
+    # Modo DELETE (padrão): o WAL deu "disk I/O error" no disco do
+    # Render. Só vale para o uso local (SQLite).
     conexao.execute("PRAGMA journal_mode=DELETE")
 
     return conexao
@@ -387,7 +485,16 @@ def criar_banco():
     # CRIAR OS 1000 NÚMEROS
     # --------------------------------------------------------
 
-    for numero in range(1, TOTAL_NUMEROS + 1):
+    if MODO_POSTGRES:
+
+        cursor.execute("""
+            INSERT INTO numeros (numero, status)
+            SELECT g, 'disponivel'
+            FROM generate_series(1, ?) AS g
+            ON CONFLICT DO NOTHING
+        """, (TOTAL_NUMEROS,))
+
+    for numero in ([] if MODO_POSTGRES else range(1, TOTAL_NUMEROS + 1)):
 
         cursor.execute("""
             INSERT OR IGNORE INTO numeros
