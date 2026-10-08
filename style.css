@@ -456,9 +456,9 @@ body {
 .grade-numeros button.indisponivel {
     background: white;
 
-    color: green;
+    color: #006437;
 
-    border-color: white;
+    border-color: #006437;
 
     cursor: not-allowed;
 
