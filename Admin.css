@@ -212,6 +212,58 @@ body {
 
 
 /* =====================================
+   SELEÇÃO EM MASSA
+   ===================================== */
+
+.selecao-em-massa {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    margin-top: 12px;
+}
+
+
+.botao-selecionar-todos,
+.botao-limpar-selecao {
+    border: none;
+
+    padding: 10px 16px;
+
+    border-radius: 7px;
+
+    cursor: pointer;
+
+    font-weight: bold;
+
+    font-size: 13px;
+}
+
+
+.botao-selecionar-todos {
+    background: #d4edda;
+    color: #155724;
+}
+
+
+.botao-selecionar-todos:hover {
+    background: #c3e6cb;
+}
+
+
+.botao-limpar-selecao {
+    background: #eee;
+    color: #444;
+}
+
+
+.botao-limpar-selecao:hover {
+    background: #ddd;
+}
+
+
+/* =====================================
    MENSAGEM
    ===================================== */
 
@@ -648,6 +700,12 @@ body {
 
 .numero-admin:hover {
     transform: scale(1.04);
+}
+
+
+.numero-admin.selecionado {
+    outline: 3px solid #006437;
+    outline-offset: -3px;
 }
 
 
