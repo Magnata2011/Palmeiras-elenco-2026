@@ -325,13 +325,38 @@ const marcarIndisponivel =
         "marcarIndisponivel"
     );
 
+const rotuloNumero =
+    document.getElementById(
+        "rotuloNumero"
+    );
+
+const selecionarTodosDisponiveis =
+    document.getElementById(
+        "selecionarTodosDisponiveis"
+    );
+
+const limparSelecao =
+    document.getElementById(
+        "limparSelecao"
+    );
+
 
 // =====================================
-// VARIÁVEL ATUAL
+// SELEÇÃO DE NÚMEROS (suporta vários)
+// =====================================
+// numerosSelecionados guarda todos os números marcados no momento.
+// botoesNumero mapeia número -> botão na grade, para poder destacar
+// visualmente quem está selecionado sem precisar re-renderizar tudo.
 // =====================================
 
-let numeroAtual =
-    null;
+let numerosSelecionados =
+    new Set();
+
+let botoesNumero =
+    new Map();
+
+let ultimosDados =
+    [];
 
 
 // =====================================
@@ -453,6 +478,28 @@ function renderizarNumeros(
     listaNumeros.innerHTML =
         "";
 
+    botoesNumero =
+        new Map();
+
+    ultimosDados =
+        dados;
+
+    // Números que não existem mais na resposta não fazem sentido
+    // continuar selecionados.
+    numerosSelecionados.forEach(
+        numero => {
+
+            const aindaExiste = dados.some(
+                item => Number(item.numero) === numero
+            );
+
+            if (!aindaExiste) {
+                numerosSelecionados.delete(numero);
+            }
+
+        }
+    );
+
 
     dados
         .sort(
@@ -481,7 +528,12 @@ function renderizarNumeros(
 
                 botao.className =
                     "numero-admin " +
-                    item.status;
+                    item.status +
+                    (
+                        numerosSelecionados.has(numero)
+                            ? " selecionado"
+                            : ""
+                    );
 
 
                 botao.textContent =
@@ -500,11 +552,17 @@ function renderizarNumeros(
                     "click",
                     () => {
 
-                        selecionarNumero(
+                        alternarSelecaoNumero(
                             numero
                         );
 
                     }
+                );
+
+
+                botoesNumero.set(
+                    numero,
+                    botao
                 );
 
 
@@ -588,77 +646,288 @@ function atualizarEstatisticas(
 
 
 // =====================================
-// SELECIONAR NÚMERO
+// MARCAR/DESMARCAR VISUALMENTE UM BOTÃO
 // =====================================
 
-async function selecionarNumero(
-    numero
+function marcarBotaoComoSelecionado(
+    numero,
+    selecionado
 ) {
 
-    numeroAtual =
-        numero;
-
-
-    numeroResultado.textContent =
-        formatarNumero(
+    const botao =
+        botoesNumero.get(
             numero
         );
+
+    if (!botao) {
+        return;
+    }
+
+    botao.classList.toggle(
+        "selecionado",
+        selecionado
+    );
+
+}
+
+
+// =====================================
+// ATUALIZAR PAINEL COM A SELEÇÃO ATUAL
+// =====================================
+// Com 1 número selecionado, consulta o status real na API (como
+// antes). Com vários, mostra só a contagem — cada um pode ter um
+// status diferente.
+// =====================================
+
+async function atualizarResumoSelecao() {
+
+    const quantidade =
+        numerosSelecionados.size;
+
+
+    if (quantidade === 0) {
+
+        resultadoNumero.style.display =
+            "none";
+
+        return;
+
+    }
 
 
     resultadoNumero.style.display =
         "block";
 
 
-    mensagem.textContent =
-        "Carregando status...";
+    if (quantidade === 1) {
 
+        const numero =
+            [...numerosSelecionados][0];
 
-    try {
+        rotuloNumero.textContent =
+            "Número";
 
-        const resposta =
-            await fetch(
-                `${API}/api/numeros/${numero}`
+        numeroResultado.textContent =
+            formatarNumero(
+                numero
             );
 
+        mensagem.textContent =
+            "Carregando status...";
 
-        if (
-            !resposta.ok
-        ) {
+        try {
 
-            throw new Error(
-                "Número não encontrado."
-            );
+            const resposta =
+                await fetch(
+                    `${API}/api/numeros/${numero}`
+                );
+
+            if (
+                !resposta.ok
+            ) {
+
+                throw new Error(
+                    "Número não encontrado."
+                );
+
+            }
+
+            const dados =
+                await resposta.json();
+
+            statusResultado.textContent =
+                nomeStatus(
+                    dados.status
+                );
+
+            mensagem.textContent =
+                "";
 
         }
 
+        catch (erro) {
 
-        const dados =
-            await resposta.json();
-
-
-        statusResultado.textContent =
-            nomeStatus(
-                dados.status
+            console.error(
+                erro
             );
 
+            mensagem.textContent =
+                "Não foi possível consultar este número.";
 
-        mensagem.textContent =
-            "";
+        }
 
+        return;
 
     }
 
-    catch (erro) {
 
-        console.error(
-            erro
+    rotuloNumero.textContent =
+        "Números selecionados";
+
+    numeroResultado.textContent =
+        String(quantidade);
+
+    statusResultado.textContent =
+        "Vários (confira as cores na lista abaixo)";
+
+    mensagem.textContent =
+        "";
+
+}
+
+
+// =====================================
+// SELECIONAR UM NÚMERO (via pesquisa)
+// =====================================
+// Pesquisar um número substitui a seleção atual por ele.
+// =====================================
+
+function selecionarNumero(
+    numero
+) {
+
+    numerosSelecionados.forEach(
+        numeroSelecionado => {
+
+            marcarBotaoComoSelecionado(
+                numeroSelecionado,
+                false
+            );
+
+        }
+    );
+
+    numerosSelecionados =
+        new Set(
+            [numero]
         );
 
+    marcarBotaoComoSelecionado(
+        numero,
+        true
+    );
 
-        mensagem.textContent =
-            "Não foi possível consultar este número.";
+    atualizarResumoSelecao();
+
+}
+
+
+// =====================================
+// ALTERNAR SELEÇÃO (clique na grade)
+// =====================================
+// Clicar num número da grade acrescenta/remove ele da seleção,
+// sem mexer nos outros já selecionados — permite selecionar vários.
+// =====================================
+
+function alternarSelecaoNumero(
+    numero
+) {
+
+    if (
+        numerosSelecionados.has(
+            numero
+        )
+    ) {
+
+        numerosSelecionados.delete(
+            numero
+        );
+
+        marcarBotaoComoSelecionado(
+            numero,
+            false
+        );
 
     }
+
+    else {
+
+        numerosSelecionados.add(
+            numero
+        );
+
+        marcarBotaoComoSelecionado(
+            numero,
+            true
+        );
+
+    }
+
+    atualizarResumoSelecao();
+
+}
+
+
+// =====================================
+// SELECIONAR TODOS OS DISPONÍVEIS
+// =====================================
+
+function selecionarTodosOsDisponiveis() {
+
+    const disponiveis =
+        ultimosDados.filter(
+            item => item.status === "disponivel"
+        );
+
+    if (disponiveis.length === 0) {
+
+        mensagem.textContent =
+            "Não há números disponíveis para selecionar.";
+
+        return;
+
+    }
+
+    disponiveis.forEach(
+        item => {
+
+            const numero =
+                Number(
+                    item.numero
+                );
+
+            numerosSelecionados.add(
+                numero
+            );
+
+            marcarBotaoComoSelecionado(
+                numero,
+                true
+            );
+
+        }
+    );
+
+    atualizarResumoSelecao();
+
+}
+
+
+// =====================================
+// LIMPAR SELEÇÃO
+// =====================================
+
+function limparSelecaoAtual() {
+
+    numerosSelecionados.forEach(
+        numero => {
+
+            marcarBotaoComoSelecionado(
+                numero,
+                false
+            );
+
+        }
+    );
+
+    numerosSelecionados =
+        new Set();
+
+    resultadoNumero.style.display =
+        "none";
+
+    mensagem.textContent =
+        "";
 
 }
 
@@ -723,7 +992,58 @@ numeroPesquisa.addEventListener(
 
 
 // =====================================
-// ALTERAR STATUS
+// ALTERAR STATUS DE UM NÚMERO
+// =====================================
+
+async function alterarStatusDeUm(
+    numero,
+    status
+) {
+
+    const resposta =
+        await fetchAdmin(
+            `${API}/api/admin/numeros/${numero}`,
+            {
+                method: "PUT",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify({
+                        status:
+                            status
+                    })
+            }
+        );
+
+
+    const dados =
+        await resposta.json();
+
+
+    if (
+        !resposta.ok
+    ) {
+
+        throw new Error(
+            dados.erro ||
+            "Não foi possível alterar o status."
+        );
+
+    }
+
+
+    return dados;
+
+}
+
+
+// =====================================
+// ALTERAR STATUS (de todos os números
+// selecionados no momento)
 // =====================================
 
 async function alterarStatus(
@@ -731,11 +1051,11 @@ async function alterarStatus(
 ) {
 
     if (
-        numeroAtual === null
+        numerosSelecionados.size === 0
     ) {
 
         alert(
-            "Selecione um número primeiro."
+            "Selecione pelo menos um número primeiro."
         );
 
         return;
@@ -761,83 +1081,88 @@ async function alterarStatus(
     );
 
 
-    try {
+    const numeros =
+        [...numerosSelecionados];
 
-        const resposta =
-            await fetchAdmin(
-                `${API}/api/admin/numeros/${numeroAtual}`,
-                {
-                    method: "PUT",
+    let sucesso =
+        0;
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            status:
-                                status
-                        })
-                }
-            );
+    let falhas =
+        0;
 
 
-        const dados =
-            await resposta.json();
+    mensagem.textContent =
+        numeros.length === 1
+            ? "Atualizando número..."
+            : `Atualizando ${numeros.length} números...`;
 
 
-        if (
-            !resposta.ok
-        ) {
+    for (const numero of numeros) {
 
-            throw new Error(
-                dados.erro ||
-                "Não foi possível alterar o status."
-            );
+        try {
+
+            const dados =
+                await alterarStatusDeUm(
+                    numero,
+                    status
+                );
+
+            if (numeros.length === 1) {
+
+                statusResultado.textContent =
+                    nomeStatus(
+                        dados.status
+                    );
+
+            }
+
+            sucesso++;
 
         }
 
+        catch (erro) {
 
-        statusResultado.textContent =
-            nomeStatus(
-                dados.status
+            console.error(
+                erro
             );
 
+            falhas++;
+
+        }
+
+    }
+
+
+    if (falhas === 0) {
 
         mensagem.textContent =
-            `Número ${formatarNumero(numeroAtual)} atualizado com sucesso.`;
-
-
-        await carregarNumeros();
+            numeros.length === 1
+                ? `Número ${formatarNumero(numeros[0])} atualizado com sucesso.`
+                : `${sucesso} números atualizados com sucesso.`;
 
     }
 
-    catch (erro) {
-
-        console.error(
-            erro
-        );
-
+    else {
 
         mensagem.textContent =
-            erro.message;
+            `${sucesso} número(s) atualizados, ${falhas} falharam.`;
 
     }
 
 
-    finally {
+    await carregarNumeros();
 
-        botoes.forEach(
-            botao => {
+    await atualizarResumoSelecao();
 
-                botao.disabled =
-                    false;
 
-            }
-        );
+    botoes.forEach(
+        botao => {
 
-    }
+            botao.disabled =
+                false;
+
+        }
+    );
 
 }
 
@@ -891,6 +1216,30 @@ atualizar.addEventListener(
     () => {
 
         carregarNumeros();
+
+    }
+);
+
+
+// =====================================
+// SELECIONAR TODOS DISPONÍVEIS / LIMPAR
+// =====================================
+
+selecionarTodosDisponiveis.addEventListener(
+    "click",
+    () => {
+
+        selecionarTodosOsDisponiveis();
+
+    }
+);
+
+
+limparSelecao.addEventListener(
+    "click",
+    () => {
+
+        limparSelecaoAtual();
 
     }
 );
